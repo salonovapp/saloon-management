@@ -4,8 +4,123 @@
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../**/*.jsx';
+@source '../**/*.ts';
+@source '../**/*.tsx';
+
 
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+}
+@layer base {
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active,
+    textarea:-webkit-autofill,
+    textarea:-webkit-autofill:hover,
+    textarea:-webkit-autofill:focus,
+    select:-webkit-autofill,
+    select:-webkit-autofill:hover,
+    select:-webkit-autofill:focus {
+        -webkit-text-fill-color: #0f172a !important;
+        caret-color: #0f172a;
+        -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+        box-shadow: 0 0 0 1000px #ffffff inset !important;
+        border-radius: 0.75rem;
+        transition: background-color 9999s ease-out 0s;
+    }
+}
+
+
+@layer components {
+    .app-shell {
+        @apply min-h-screen bg-black text-white;
+    }
+
+    .shell-nav {
+        @apply border-b border-white/15 bg-black/90 backdrop-blur;
+    }
+
+    .shell-wrap {
+        @apply mx-auto flex max-w-7xl items-center justify-between px-5 py-4;
+    }
+
+    .brand-title {
+        @apply text-base font-semibold tracking-[0.2em] uppercase;
+    }
+
+    .nav-link {
+        @apply rounded-full border border-white/20 px-4 py-2 text-xs font-medium tracking-wide text-white/80 transition;
+    }
+
+    .nav-link:hover {
+        @apply border-white bg-white text-black;
+    }
+
+    .nav-link.router-link-active {
+        @apply border-white bg-white text-black;
+    }
+
+    .page-wrap {
+        @apply mx-auto max-w-7xl px-5 py-8;
+    }
+
+    /* Applies to current route placeholder sections. */
+    .page-wrap section {
+        @apply rounded-3xl border border-white/15 bg-white/3 p-8 shadow-2xl shadow-black/30 backdrop-blur;
+    }
+
+    .page-wrap h2 {
+        @apply text-2xl font-semibold tracking-tight;
+    }
+
+    .page-wrap p {
+        @apply mt-3 text-sm leading-6 text-white/70;
+    }
+
+    .checkmark-wrap {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .checkmark-circle {
+        fill: #ecfdf5;
+        stroke: #10b981;
+        stroke-width: 2.5;
+        stroke-dasharray: 220;
+        stroke-dashoffset: 220;
+        animation: draw-circle 0.9s ease forwards;
+    }
+
+    .checkmark-path {
+        fill: none;
+        stroke: #059669;
+        stroke-width: 5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 80;
+        stroke-dashoffset: 80;
+        animation: draw-path 0.5s 0.7s ease forwards;
+    }
+}
+
+@keyframes draw-circle {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes draw-path {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+@font-face {
+    font-family: 'PROPONO BC';
+    src: url('/fonts/PROPONO-BC.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
 }
