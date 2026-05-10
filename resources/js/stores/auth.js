@@ -2,8 +2,9 @@ import axios from 'axios'
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react'
 
 const TOKEN_KEY = 'salonos_token'
-const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH !== 'false'
+const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === 'true'
 const MOCK_TOKEN = 'mock-token-salonos'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
 const sleep = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -38,6 +39,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(null)
   const [tenant, setTenant] = useState(null)
+  const [shouldOnboard, setShouldOnboard] = useState(false)
   const [permissions, setPermissions] = useState([])
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -70,8 +72,13 @@ export function AuthProvider({ children }) {
     setUser(null)
     setToken(null)
     setTenant(null)
+    setShouldOnboard(false)
     setPermissions([])
     setIsAuthenticated(false)
+  }, [])
+
+  const markOnboardingCompleted = useCallback(() => {
+    setShouldOnboard(false)
   }, [])
 
   const fetchMe = useCallback(async () => {
@@ -144,11 +151,11 @@ export function AuthProvider({ children }) {
         }
       }
 
-      const response = await axios.post('/v1/public/login', {
+      const response = await axios.post(`${API_BASE_URL}/v1/public/login`, {
         email,
         password,
         device_name: deviceName,
-      }, { withCredentials: true })
+      })
 
       const data = response.data || {}
       const nextToken = data.token || data.access_token || data?.data?.token || null
@@ -158,6 +165,7 @@ export function AuthProvider({ children }) {
 
       setUser(data.user || data?.data?.user || null)
       setTenant(data.tenant || data?.data?.tenant || null)
+      setShouldOnboard(Boolean(data.should_onboard || data?.data?.should_onboard))
       setPermissions(data.permissions || data?.data?.permissions || [])
 
       if (!(data.user || data?.data?.user)) {
@@ -167,16 +175,19 @@ export function AuthProvider({ children }) {
       }
 
       return response.data
-    } catch {
-      await sleep()
-      const mock = buildMockSession(email)
-      setToken(mock.token)
-      setUser(mock.user)
-      setTenant(mock.tenant)
-      setPermissions(mock.permissions)
-      setIsAuthenticated(true)
-      localStorage.setItem(TOKEN_KEY, mock.token)
-      return { ...mock, mock: true }
+    } catch (error) {
+      if (USE_MOCK_AUTH) {
+        await sleep()
+        const mock = buildMockSession(email)
+        setToken(mock.token)
+        setUser(mock.user)
+        setTenant(mock.tenant)
+        setPermissions(mock.permissions)
+        setIsAuthenticated(true)
+        localStorage.setItem(TOKEN_KEY, mock.token)
+        return { ...mock, mock: true }
+      }
+      throw error
     } finally {
       setLoading(false)
     }
@@ -225,6 +236,7 @@ export function AuthProvider({ children }) {
     user,
     token,
     tenant,
+    shouldOnboard,
     permissions,
     isAuthenticated,
     loading,
@@ -235,15 +247,16 @@ export function AuthProvider({ children }) {
     planName,
     authHeaders,
     clearAuthState,
+    markOnboardingCompleted,
     login,
     logout,
     fetchMe,
     can,
     initialize,
   }), [
-    user, token, tenant, permissions, isAuthenticated, loading, initialized,
+    user, token, tenant, shouldOnboard, permissions, isAuthenticated, loading, initialized,
     isOwner, isManager, isFree, planName,
-    authHeaders, clearAuthState, login, logout, fetchMe, can, initialize,
+    authHeaders, clearAuthState, markOnboardingCompleted, login, logout, fetchMe, can, initialize,
   ])
 
   return React.createElement(AuthContext.Provider, { value }, children)

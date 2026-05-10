@@ -1,5 +1,5 @@
 import axios from 'axios'
-import React, { createElement, useMemo, useRef, useState } from 'react'
+import React, { createElement, useCallback, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../stores/auth'
 import BrandLogo from '../../components/ui/BrandLogo.jsx'
@@ -7,7 +7,8 @@ import StepAccount from './steps/StepAccount.jsx'
 import StepBranch from './steps/StepBranch.jsx'
 import StepService from './steps/StepService.jsx'
 
-const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH !== 'false'
+const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === 'true'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
 export default function OnboardingWizard() {
   const router = useNavigate()
@@ -15,6 +16,7 @@ export default function OnboardingWizard() {
   const activeStepRef = useRef(null)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [onboardingData, setOnboardingData] = useState({
     account: {
       name: auth.user?.name || '',
@@ -51,6 +53,36 @@ export default function OnboardingWizard() {
 
   const stepKeyByIndex = ['account', 'branch', 'service']
   const currentStepKey = stepKeyByIndex[currentStepIndex]
+  const handleStepDataUpdate = useCallback((value) => {
+    setOnboardingData((previous) => ({
+      ...previous,
+      [currentStepKey]: value,
+    }))
+  }, [currentStepKey])
+
+  const handleSkipForNow = useCallback(async (serviceData) => {
+    const updatedOnboardingData = {
+      ...onboardingData,
+      service: serviceData,
+    }
+    setOnboardingData(updatedOnboardingData)
+    setSubmitError('')
+    setSubmitting(true)
+    try {
+      await saveStep(2, updatedOnboardingData)
+      if (!USE_MOCK_AUTH) {
+        const email = auth.user?.email || onboardingData.account?.email
+        await axios.post(`${API_BASE_URL}/v1/onboarding/complete`, { email })
+      }
+      auth.markOnboardingCompleted()
+      router('/dashboard')
+    } catch (error) {
+      setSubmitError(error?.response?.data?.message || 'Unable to skip services right now. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }, [auth, onboardingData, router])
+
   const currentStepData = onboardingData[currentStepKey]
   const currentStepComponent = steps[currentStepIndex].component
   const isLastStep = currentStepIndex === steps.length - 1
@@ -77,7 +109,46 @@ export default function OnboardingWizard() {
     }
   }
 
+  const saveStep = async (index, payload) => {
+    if (USE_MOCK_AUTH) {
+      localStorage.setItem('salonos_mock_onboarding', JSON.stringify(payload))
+      await new Promise((resolve) => setTimeout(resolve, 350))
+      return
+    }
+
+    const email = auth.user?.email || onboardingData.account?.email
+    if (!email) {
+      throw new Error('Unable to detect current user email for onboarding.')
+    }
+
+    if (index === 0) {
+      await axios.post(`${API_BASE_URL}/v1/onboarding/account`, {
+        email,
+        name: payload.account?.name || '',
+        plan: payload.account?.plan || 'Free Trial',
+      })
+      return
+    }
+
+    if (index === 1) {
+      await axios.post(`${API_BASE_URL}/v1/onboarding/branch`, {
+        email,
+        ...payload.branch,
+      })
+      return
+    }
+
+    if (index === 2) {
+      await axios.post(`${API_BASE_URL}/v1/onboarding/services`, {
+        email,
+        skipped: Boolean(payload.service?.skipped),
+        services: payload.service?.services || [],
+      })
+    }
+  }
+
   const goNext = async () => {
+    setSubmitError('')
     const valid = activeStepRef.current?.validate ? activeStepRef.current.validate() : true
     if (!valid) return
 
@@ -88,26 +159,28 @@ export default function OnboardingWizard() {
     }
     setOnboardingData(updatedOnboardingData)
 
-    if (!isLastStep) {
-      setCurrentStepIndex((previous) => previous + 1)
-      return
-    }
-
     setSubmitting(true)
     try {
-      if (USE_MOCK_AUTH) {
-        localStorage.setItem('salonos_mock_onboarding', JSON.stringify(updatedOnboardingData))
-        await new Promise((resolve) => setTimeout(resolve, 500))
-      } else {
-        await axios.post('/v1/onboarding/complete', updatedOnboardingData)
+      await saveStep(currentStepIndex, updatedOnboardingData)
+
+      if (!isLastStep) {
+        setCurrentStepIndex((previous) => previous + 1)
+        return
       }
-    } catch (_) {
-      // Keep flow smooth during frontend-only development mode.
+
+      if (!USE_MOCK_AUTH) {
+        const email = auth.user?.email || onboardingData.account?.email
+        await axios.post(`${API_BASE_URL}/v1/onboarding/complete`, { email })
+      }
+      auth.markOnboardingCompleted()
+    } catch (error) {
+      setSubmitError(error?.response?.data?.message || 'Unable to save this step right now. Please try again.')
+      return
     } finally {
       setSubmitting(false)
     }
 
-    router('/onboarding/complete')
+    router('/dashboard')
   }
 
   return (
@@ -139,15 +212,17 @@ export default function OnboardingWizard() {
         </aside>
 
         <section className="p-6 lg:col-span-2 lg:p-8">
+          {submitError ? (
+            <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {submitError}
+            </div>
+          ) : null}
+
           {createElement(currentStepComponent, {
             ref: activeStepRef,
             modelValue: currentStepData,
-            onUpdateModelValue: (value) => {
-              setOnboardingData((previous) => ({
-                ...previous,
-                [currentStepKey]: value,
-              }))
-            },
+            onUpdateModelValue: handleStepDataUpdate,
+            onSkipForNow: currentStepKey === 'service' ? handleSkipForNow : undefined,
           })}
 
           <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-5">

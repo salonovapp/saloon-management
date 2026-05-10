@@ -43,10 +43,15 @@ export default function LoginView() {
         form.remember ? 'web-remember' : 'web',
       )
       const data = response?.data || response || {}
+      const shouldOnboard = Boolean(data.should_onboard || data?.data?.should_onboard)
       const needs2fa = Boolean(
         data.requires_2fa || data.two_factor_required || data.next_step === '2fa',
       )
-      router(needs2fa ? '/verify-2fa' : '/dashboard')
+      if (needs2fa) {
+        router('/verify-2fa')
+        return
+      }
+      router(shouldOnboard ? '/onboarding' : '/dashboard')
     } catch (error) {
       setAuthError(error?.response?.data?.message || 'Invalid credentials. Please try again.')
     } finally {

@@ -23,7 +23,7 @@ const selectClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-
 const rangeWrapClass = 'rounded-xl border border-slate-300 bg-white px-3 py-2'
 const priceInputClass = 'w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-8 pr-3 text-sm text-slate-900 placeholder:text-slate-400'
 
-const StepService = forwardRef(function StepService({ modelValue = { services: [], skipped: false }, onUpdateModelValue }, ref) {
+const StepService = forwardRef(function StepService({ modelValue = { services: [], skipped: false }, onUpdateModelValue, onSkipForNow }, ref) {
   const [services, setServices] = useState(
     modelValue.services?.length ? structuredClone(modelValue.services) : [createService()],
   )
@@ -51,6 +51,10 @@ const StepService = forwardRef(function StepService({ modelValue = { services: [
   const skipForNow = () => {
     setSkipped(true)
     setError('')
+    onSkipForNow?.({
+      skipped: true,
+      services: [],
+    })
   }
 
   const validate = () => {

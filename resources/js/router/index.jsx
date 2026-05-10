@@ -47,7 +47,7 @@ function GuestOnly({ children }) {
   const auth = useAuthStore()
 
   if (!auth.initialized) return null
-  if (auth.isAuthenticated) return <Navigate to="/dashboard" replace />
+  if (auth.isAuthenticated) return <Navigate to={auth.shouldOnboard ? '/onboarding' : '/dashboard'} replace />
 
   return children
 }
@@ -61,6 +61,10 @@ function RequireAuth({ permission }) {
   if (!auth.isAuthenticated) {
     const redirect = encodeURIComponent(`${location.pathname}${location.search}`)
     return <Navigate to={`/login?redirect=${redirect}`} replace />
+  }
+
+  if (auth.shouldOnboard && !location.pathname.startsWith('/onboarding')) {
+    return <Navigate to="/onboarding" replace />
   }
 
   if (permission && !auth.can(permission)) {

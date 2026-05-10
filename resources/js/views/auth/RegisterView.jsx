@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import BaseInput from '../../components/ui/BaseInput.jsx'
 import BrandLogo from '../../components/ui/BrandLogo.jsx'
 
-const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH !== 'false'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 export default function RegisterView() {
   const router = useNavigate()
@@ -65,14 +65,17 @@ export default function RegisterView() {
 
   const updateField = (key, value) => {
     setForm((previous) => ({ ...previous, [key]: value }))
+    setErrors((previous) => ({ ...previous, [key]: '' }))
   }
 
   const validate = () => {
+    const cleanEmail = form.email.trim()
+    const cleanPhone = form.phone.trim()
     const nextErrors = {
-      salon_name: form.salon_name ? '' : 'Salon name is required.',
-      name: form.name ? '' : 'Your name is required.',
-      email: /\S+@\S+\.\S+/.test(form.email) ? '' : 'Valid email is required.',
-      phone: form.phone ? '' : 'Phone is required.',
+      salon_name: form.salon_name.trim() ? '' : 'Salon name is required.',
+      name: form.name.trim() ? '' : 'Your name is required.',
+      email: /\S+@\S+\.\S+/.test(cleanEmail) ? '' : 'Valid email is required.',
+      phone: /^\+?[0-9\s\-()]{7,20}$/.test(cleanPhone) ? '' : 'Valid phone is required.',
       password: form.password.length >= 8 ? '' : 'Password must be at least 8 characters.',
       password_confirmation: form.password === form.password_confirmation ? '' : 'Passwords do not match.',
       terms: form.terms ? '' : 'Please accept terms to continue.',
@@ -90,31 +93,31 @@ export default function RegisterView() {
 
     setSubmitting(true)
     try {
-      if (USE_MOCK_AUTH) {
-        localStorage.setItem(
-          'salonos_mock_registration',
-          JSON.stringify({
-            salon_name: form.salon_name,
-            name: form.name,
-            email: form.email,
-            phone: form.phone,
-          }),
-        )
-        await new Promise((resolve) => setTimeout(resolve, 400))
-      } else {
-        await axios.post('/v1/public/register', {
-          salon_name: form.salon_name,
-          name: form.name,
-          email: form.email,
-          phone: form.phone,
-          password: form.password,
-          password_confirmation: form.password_confirmation,
-          terms: form.terms,
-        })
-      }
+      await axios.post(`${API_BASE_URL}/v1/public/register`, {
+        salon_name: form.salon_name.trim(),
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        phone: form.phone.trim(),
+        password: form.password,
+        password_confirmation: form.password_confirmation,
+        terms: form.terms,
+      })
 
       router('/onboarding')
     } catch (error) {
+      const serverErrors = error?.response?.data?.errors || {}
+      if (Object.keys(serverErrors).length > 0) {
+        setErrors((previous) => ({
+          ...previous,
+          salon_name: serverErrors.salon_name?.[0] || '',
+          name: serverErrors.name?.[0] || '',
+          email: serverErrors.email?.[0] || '',
+          phone: serverErrors.phone?.[0] || '',
+          password: serverErrors.password?.[0] || '',
+          password_confirmation: serverErrors.password_confirmation?.[0] || '',
+          terms: serverErrors.terms?.[0] || '',
+        }))
+      }
       setSubmitError(error?.response?.data?.message || 'Unable to create account right now.')
     } finally {
       setSubmitting(false)
