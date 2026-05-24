@@ -24,6 +24,7 @@ class RegisterSalonOwnerAction
                 'email' => strtolower(trim((string) $payload['email'])),
                 'phone' => trim((string) $payload['phone']),
                 'password' => (string) $payload['password'],
+                'role' => 'owner',
                 'saloon_id' => $saloon->id,
             ]);
 

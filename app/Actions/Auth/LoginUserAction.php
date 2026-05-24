@@ -10,12 +10,13 @@ class LoginUserAction
 {
     /**
      * @param array<string, mixed> $payload
-     * @return array{user: User, should_onboard: bool}
+     * @return array{user: User, token: string, should_onboard: bool}
      */
     public function execute(array $payload): array
     {
         $email = strtolower(trim((string) $payload['email']));
         $password = (string) $payload['password'];
+        $deviceName = trim((string) ($payload['device_name'] ?? 'web'));
 
         $user = User::query()->where('email', $email)->first();
 
@@ -23,8 +24,11 @@ class LoginUserAction
             throw new HttpException(422, 'Invalid email or password.');
         }
 
+        $token = $user->createToken($deviceName !== '' ? $deviceName : 'web')->plainTextToken;
+
         return [
             'user' => $user,
+            'token' => $token,
             'should_onboard' => is_null($user->onboarding_completed_at),
         ];
     }

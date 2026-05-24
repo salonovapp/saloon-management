@@ -22,13 +22,15 @@ class LoginController extends Controller
         return response()->json([
             'message' => 'Login successful.',
             'data' => [
-                'token' => null,
+                'token' => $result['token'],
                 'should_onboard' => $result['should_onboard'],
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
                     'phone' => $user->phone,
+                    'photo' => $user->photo_url,
+                    'role' => $user->role,
                     'saloon_id' => $user->saloon_id,
                 ],
             ],
