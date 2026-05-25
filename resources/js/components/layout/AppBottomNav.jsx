@@ -1,22 +1,20 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { Home, Calendar, Users, CreditCard, MoreHorizontal } from 'lucide-react'
+import { clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
 
-function Icon({ paths, className }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
-      {paths.map((d, i) => (
-        <path key={i} d={d} strokeLinecap="round" strokeLinejoin="round" />
-      ))}
-    </svg>
-  )
+function cn(...inputs) {
+  return twMerge(clsx(inputs))
 }
 
 const items = [
-  { label: 'Dashboard', to: '/dashboard', icon: ['M3 10.5L12 3l9 7.5', 'M5.25 9.75V21h13.5V9.75'] },
-  { label: 'Appointments', to: '/appointments', icon: ['M8 2v4', 'M16 2v4', 'M3 9h18', 'M4 5h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1z'] },
-  { label: 'Customers', to: '/customers', icon: ['M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2', 'M9 7a4 4 0 110-8 4 4 0 010 8', 'M23 21v-2a4 4 0 00-3-3.87', 'M16 3.13a4 4 0 010 7.75'] },
-  { label: 'Billing', to: '/billing', icon: ['M3 7h18', 'M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z', 'M7 15h4'] },
-  { label: 'More', to: '/settings', icon: ['M5 12h.01', 'M12 12h.01', 'M19 12h.01'] },
+  { label: 'Home', to: '/dashboard', icon: Home },
+  { label: 'Schedule', to: '/appointments', icon: Calendar },
+  { label: 'Clients', to: '/customers', icon: Users },
+  { label: 'Billing', to: '/billing', icon: CreditCard },
+  { label: 'More', to: '/settings', icon: MoreHorizontal },
 ]
 
 export default function AppBottomNav() {
@@ -24,14 +22,46 @@ export default function AppBottomNav() {
   const isActive = (targetPath) => location.pathname.startsWith(targetPath)
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white md:hidden">
-      <div className="grid grid-cols-5">
-        {items.map((item) => (
-          <Link key={item.to} to={item.to} className={`flex flex-col items-center justify-center py-2 text-xs ${isActive(item.to) ? 'text-teal-600' : 'text-slate-500'}`}>
-            <Icon className="h-5 w-5" paths={item.icon} />
-            <span className="mt-0.5">{item.label}</span>
-          </Link>
-        ))}
+    <nav className="fixed bottom-0 left-0 right-0 z-40 pb-safe md:hidden">
+      {/* Glassmorphism Background with shadow */}
+      <div className="absolute inset-0 bg-white/80 backdrop-blur-xl border-t border-slate-200/50 shadow-[0_-8px_30px_rgba(0,0,0,0.04)]" />
+      
+      <div className="relative flex justify-between items-center px-2 py-1">
+        {items.map((item) => {
+          const active = isActive(item.to)
+          const Icon = item.icon
+
+          return (
+            <Link 
+              key={item.to} 
+              to={item.to} 
+              className={cn(
+                "relative flex flex-col items-center justify-center w-full py-2 tap-highlight-transparent",
+                active ? "text-teal-600" : "text-slate-400 hover:text-slate-600"
+              )}
+            >
+              <div className="relative flex items-center justify-center w-10 h-8">
+                {active && (
+                  <motion.div
+                    layoutId="bottomNavIndicator"
+                    className="absolute inset-0 bg-teal-100/50 rounded-full"
+                    transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                  />
+                )}
+                <Icon 
+                  className={cn("relative z-10 w-5 h-5 transition-transform duration-300", active && "scale-110")} 
+                  strokeWidth={active ? 2.5 : 2}
+                />
+              </div>
+              <span className={cn(
+                "mt-0.5 text-[10px] tracking-wide transition-colors duration-300",
+                active ? "font-semibold" : "font-medium"
+              )}>
+                {item.label}
+              </span>
+            </Link>
+          )
+        })}
       </div>
     </nav>
   )

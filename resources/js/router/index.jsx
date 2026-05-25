@@ -14,6 +14,7 @@ import LoginView from '../views/auth/LoginView.jsx'
 import RegisterView from '../views/auth/RegisterView.jsx'
 import ResetPasswordView from '../views/auth/ResetPasswordView.jsx'
 import TwoFactorView from '../views/auth/TwoFactorView.jsx'
+import ComponentsTestView from '../views/ComponentsTestView.jsx'
 import OnboardingComplete from '../views/onboarding/OnboardingComplete.jsx'
 import OnboardingWizard from '../views/onboarding/OnboardingWizard.jsx'
 
@@ -104,6 +105,7 @@ export function AppRoutes() {
           <Route path="/billing" element={<BillingView />} />
           <Route path="/analytics" element={<AnalyticsView />} />
           <Route path="/settings" element={<SettingsView />} />
+          <Route path="/ui-test" element={<ComponentsTestView />} />
         </Route>
 
         <Route element={<RequireAuth permission="appointments.view" />}>
