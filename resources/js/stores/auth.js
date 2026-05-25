@@ -19,7 +19,7 @@ const buildMockSession = (email) => ({
   },
   tenant: {
     id: 1,
-    name: 'SalonOS Demo Tenant',
+    name: 'salonovapp',
     plan: { name: 'Free Trial', slug: 'free' },
   },
   permissions: [
