@@ -3,11 +3,13 @@ import React, { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import BaseInput from '../../components/ui/BaseInput.jsx'
 import BrandLogo from '../../components/ui/BrandLogo.jsx'
+import { useAuthStore } from '../../stores/auth'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 export default function RegisterView() {
   const router = useNavigate()
+  const auth = useAuthStore()
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [errors, setErrors] = useState({
@@ -102,6 +104,8 @@ export default function RegisterView() {
         password_confirmation: form.password_confirmation,
         terms: form.terms,
       })
+
+      await auth.login(form.email.trim().toLowerCase(), form.password)
 
       router('/onboarding')
     } catch (error) {

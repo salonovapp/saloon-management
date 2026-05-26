@@ -25,7 +25,7 @@ class RegisterRequest extends FormRequest
         return [
             'salon_name' => ['required', 'string', 'max:120'],
             'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'string', 'email:rfc,dns', 'max:120', 'unique:users,email'],
+            'email' => ['required', 'string', 'email', 'max:120', 'unique:users,email'],
             'phone' => ['required', 'string', 'regex:/^\+?[0-9\s\-()]{7,20}$/'],
             'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
             'terms' => ['accepted'],

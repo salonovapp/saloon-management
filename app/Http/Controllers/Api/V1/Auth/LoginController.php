@@ -18,6 +18,7 @@ class LoginController extends Controller
     {
         $result = $this->loginUserAction->execute($request->validated());
         $user = $result['user'];
+        $saloon = $user->saloon;
 
         return response()->json([
             'message' => 'Login successful.',
@@ -32,6 +33,23 @@ class LoginController extends Controller
                     'photo' => $user->photo_url,
                     'role' => $user->role,
                     'saloon_id' => $user->saloon_id,
+                ],
+                'tenant' => $saloon ? [
+                    'id' => $saloon->id,
+                    'name' => $saloon->name,
+                    'plan' => [
+                        'name' => 'Free Trial',
+                        'slug' => 'free',
+                    ],
+                ] : null,
+                'permissions' => [
+                    'appointments.view',
+                    'staff.view',
+                    'inventory.view',
+                    'customers.view',
+                    'billing.view',
+                    'analytics.view',
+                    'settings.view',
                 ],
             ],
         ]);
