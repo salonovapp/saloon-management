@@ -4,10 +4,18 @@ namespace App\Actions\Auth;
 
 use App\Models\Saloon;
 use App\Models\User;
+use App\Repositories\Contracts\SaloonRepositoryInterface;
+use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 
 class RegisterSalonOwnerAction
 {
+    public function __construct(
+        private readonly SaloonRepositoryInterface $saloonRepository,
+        private readonly UserRepositoryInterface $userRepository,
+    ) {
+    }
+
     /**
      * @param array<string, mixed> $payload
      * @return array{user: User, saloon: Saloon}
@@ -15,11 +23,11 @@ class RegisterSalonOwnerAction
     public function execute(array $payload): array
     {
         return DB::transaction(function () use ($payload): array {
-            $saloon = Saloon::query()->create([
+            $saloon = $this->saloonRepository->create([
                 'name' => trim((string) $payload['salon_name']),
             ]);
 
-            $user = User::query()->create([
+            $user = $this->userRepository->create([
                 'name' => trim((string) $payload['name']),
                 'email' => strtolower(trim((string) $payload['email'])),
                 'phone' => trim((string) $payload['phone']),

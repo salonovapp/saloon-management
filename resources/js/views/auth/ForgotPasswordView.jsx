@@ -4,32 +4,48 @@ import BaseInput from '../../components/ui/BaseInput.jsx'
 import BrandLogo from '../../components/ui/BrandLogo.jsx'
 
 const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH !== 'false'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
 export default function ForgotPasswordView() {
-  const [email, setEmail] = useState('')
-  const [emailError, setEmailError] = useState('')
+  const [login, setLogin] = useState('')
+  const [loginError, setLoginError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [deliveryChannel, setDeliveryChannel] = useState('')
+
+  const isEmailOrPhone = (value) => {
+    const trimmed = value.trim()
+    return /\S+@\S+\.\S+/.test(trimmed) || /^\+?[0-9\s\-()]{7,20}$/.test(trimmed)
+  }
 
   const submit = async (event) => {
     event.preventDefault()
     setErrorMessage('')
+    setOtpCode('')
+    setDeliveryChannel('')
 
-    const nextEmailError = /\S+@\S+\.\S+/.test(email) ? '' : 'Please enter a valid email.'
-    setEmailError(nextEmailError)
-    if (nextEmailError) return
+    const nextLoginError = isEmailOrPhone(login) ? '' : 'Enter a valid email or phone number.'
+    setLoginError(nextLoginError)
+    if (nextLoginError) return
 
     setSubmitting(true)
     try {
       if (USE_MOCK_AUTH) {
         await new Promise((resolve) => setTimeout(resolve, 400))
+        setOtpCode('1234')
+        setDeliveryChannel(login.includes('@') ? 'email' : 'sms')
       } else {
-        await axios.post('/v1/public/forgot-password', { email })
+        const response = await axios.post(`${API_BASE_URL}/v1/public/forgot-password/request-otp`, {
+          login: login.trim(),
+        })
+        setOtpCode(response?.data?.data?.otp_code || '')
+        setDeliveryChannel(response?.data?.data?.channel || '')
       }
       setSuccess(true)
     } catch (error) {
-      setErrorMessage(error?.response?.data?.message || 'Unable to send reset link right now.')
+      setErrorMessage(error?.response?.data?.message || 'Unable to send OTP right now.')
     } finally {
       setSubmitting(false)
     }
@@ -53,14 +69,14 @@ export default function ForgotPasswordView() {
               <path d="M52 56l16 11M128 56l-16 11" stroke="#ffffff" strokeWidth="6" strokeLinecap="round" />
             </svg>
             <p className="text-sm leading-6">
-              Your stylist profile, appointments, and settings stay secure. Enter your email and we will send a reset link instantly.
+              Your stylist profile, appointments, and settings stay secure. Enter your email or phone and we will send a password reset OTP.
             </p>
           </div>
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-2xl sm:p-8">
           <h1 className="text-2xl font-bold text-slate-900">Forgot password</h1>
-          <p className="mt-1 text-sm text-slate-500">We will send a reset link to your email.</p>
+          <p className="mt-1 text-sm text-slate-500">We will send a 4-digit OTP to your email or phone.</p>
 
           {success ? (
             <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-slate-700">
@@ -68,9 +84,16 @@ export default function ForgotPasswordView() {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M20 6L9 17l-5-5" />
                 </svg>
-                <p className="text-sm font-medium">Check your email</p>
+                <p className="text-sm font-medium">OTP sent successfully</p>
               </div>
-              <p className="mt-1 text-sm">If an account exists, a reset link has been sent.</p>
+              <p className="mt-1 text-sm">
+                Use the OTP sent via {deliveryChannel === 'sms' ? 'SMS' : 'email'} to continue resetting your password.
+              </p>
+              {otpCode ? (
+                <p className="mt-2 text-sm font-medium text-slate-900">
+                  OTP: {otpCode}
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -83,12 +106,12 @@ export default function ForgotPasswordView() {
           {!success ? (
             <form className="mt-5 space-y-4" onSubmit={submit}>
               <BaseInput
-                modelValue={email}
-                onUpdateModelValue={setEmail}
-                label="Email"
-                type="email"
-                placeholder="you@salon.com"
-                error={emailError}
+                modelValue={login}
+                onUpdateModelValue={setLogin}
+                label="Email or Phone"
+                type="text"
+                placeholder="you@salon.com or +91 9876543210"
+                error={loginError}
               />
               <button
                 type="submit"
@@ -101,7 +124,7 @@ export default function ForgotPasswordView() {
                     <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
                   </svg>
                 ) : null}
-                {submitting ? 'Sending...' : 'Send Reset Link'}
+                {submitting ? 'Sending...' : 'Send OTP'}
               </button>
             </form>
           ) : null}

@@ -1,7 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Auth\LoginController;
+use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
+use App\Http\Controllers\Api\V1\Auth\RequestPasswordResetOtpController;
+use App\Http\Controllers\Api\V1\Auth\ResetPasswordWithOtpController;
+use App\Http\Controllers\Api\V1\Auth\VerifyPasswordResetOtpController;
+use App\Http\Controllers\Api\V1\Category\CategoryController;
 use App\Http\Controllers\Api\V1\Onboarding\OnboardingController;
 use App\Http\Controllers\Api\V1\Profile\ChangePasswordController;
 use App\Http\Controllers\Api\V1\Profile\UpdateProfileController;
@@ -10,45 +15,15 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function (): void {
     Route::post('/public/register', RegisterController::class);
     Route::post('/public/login', LoginController::class);
+    Route::post('/public/forgot-password/request-otp', RequestPasswordResetOtpController::class);
+    Route::post('/public/forgot-password/verify-otp', VerifyPasswordResetOtpController::class);
+    Route::post('/public/forgot-password/reset-password', ResetPasswordWithOtpController::class);
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::put('/profile', UpdateProfileController::class);
         Route::put('/password', ChangePasswordController::class);
-        Route::get('/me', function (\Illuminate\Http\Request $request) {
-            $user = $request->user();
-            $saloon = $user->saloon;
-            
-            return response()->json([
-                'data' => [
-                    'user' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'phone' => $user->phone,
-                        'photo' => $user->photo_url,
-                        'role' => $user->role,
-                        'saloon_id' => $user->saloon_id,
-                    ],
-                    'tenant' => $saloon ? [
-                        'id' => $saloon->id,
-                        'name' => $saloon->name,
-                        'plan' => [
-                            'name' => 'Free Trial',
-                            'slug' => 'free',
-                        ],
-                    ] : null,
-                    'permissions' => [
-                        'appointments.view',
-                        'staff.view',
-                        'inventory.view',
-                        'customers.view',
-                        'billing.view',
-                        'analytics.view',
-                        'settings.view',
-                    ],
-                ]
-            ]);
-        });
+        Route::get('/me', MeController::class);
+        Route::apiResource('categories', CategoryController::class);
     });
 
     Route::post('/onboarding/account', [OnboardingController::class, 'account']);

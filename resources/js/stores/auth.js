@@ -8,12 +8,13 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 const sleep = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms))
 
-const buildMockSession = (email) => ({
+const buildMockSession = (identifier) => ({
   token: MOCK_TOKEN,
   user: {
     id: 1,
     name: 'Salon Owner',
-    email: email || 'owner@salonos.test',
+    email: String(identifier || '').includes('@') ? identifier : 'owner@salonos.test',
+    phone: String(identifier || '').includes('@') ? null : (identifier || null),
     role: 'owner',
     roles: ['owner'],
   },
@@ -86,7 +87,7 @@ export function AuthProvider({ children }) {
     try {
       if (USE_MOCK_AUTH) {
         await sleep(200)
-        const mock = buildMockSession(user?.email || 'owner@salonos.test')
+        const mock = buildMockSession(user?.email || user?.phone || 'owner@salonos.test')
         setUser(mock.user)
         setTenant(mock.tenant)
         setPermissions(mock.permissions)
@@ -116,7 +117,7 @@ export function AuthProvider({ children }) {
       }
 
       if (token) {
-        const mock = buildMockSession(user?.email || 'owner@salonos.test')
+        const mock = buildMockSession(user?.email || user?.phone || 'owner@salonos.test')
         setUser(mock.user)
         setTenant(mock.tenant)
         setPermissions(mock.permissions)
@@ -132,14 +133,14 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false)
     }
-  }, [authHeaders, token, user?.email])
+  }, [authHeaders, token, user?.email, user?.phone])
 
-  const login = useCallback(async (email, password, deviceName = 'web') => {
+  const login = useCallback(async (login, password, deviceName = 'web') => {
     setLoading(true)
     try {
       if (USE_MOCK_AUTH) {
         await sleep()
-        const mock = buildMockSession(email)
+        const mock = buildMockSession(login)
         setToken(mock.token)
         setUser(mock.user)
         setTenant(mock.tenant)
@@ -154,7 +155,7 @@ export function AuthProvider({ children }) {
       }
 
       const response = await axios.post(`${API_BASE_URL}/v1/public/login`, {
-        email,
+        login,
         password,
         device_name: deviceName,
       })
@@ -180,7 +181,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       if (USE_MOCK_AUTH) {
         await sleep()
-        const mock = buildMockSession(email)
+        const mock = buildMockSession(login)
         setToken(mock.token)
         setUser(mock.user)
         setTenant(mock.tenant)

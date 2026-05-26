@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Auth;
 use App\Actions\Auth\LoginUserAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Auth\LoginRequest;
+use App\Http\Resources\Api\V1\Auth\LoginResponseResource;
 use Illuminate\Http\JsonResponse;
 
 class LoginController extends Controller
@@ -17,41 +18,7 @@ class LoginController extends Controller
     public function __invoke(LoginRequest $request): JsonResponse
     {
         $result = $this->loginUserAction->execute($request->validated());
-        $user = $result['user'];
-        $saloon = $user->saloon;
 
-        return response()->json([
-            'message' => 'Login successful.',
-            'data' => [
-                'token' => $result['token'],
-                'should_onboard' => $result['should_onboard'],
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone' => $user->phone,
-                    'photo' => $user->photo_url,
-                    'role' => $user->role,
-                    'saloon_id' => $user->saloon_id,
-                ],
-                'tenant' => $saloon ? [
-                    'id' => $saloon->id,
-                    'name' => $saloon->name,
-                    'plan' => [
-                        'name' => 'Free Trial',
-                        'slug' => 'free',
-                    ],
-                ] : null,
-                'permissions' => [
-                    'appointments.view',
-                    'staff.view',
-                    'inventory.view',
-                    'customers.view',
-                    'billing.view',
-                    'analytics.view',
-                    'settings.view',
-                ],
-            ],
-        ]);
+        return (new LoginResponseResource($result))->response();
     }
 }

@@ -11,23 +11,28 @@ export default function LoginView() {
 
   const [submitting, setSubmitting] = useState(false)
   const [authError, setAuthError] = useState('')
-  const [errors, setErrors] = useState({ email: '', password: '' })
-  const [form, setForm] = useState({ email: '', password: '', remember: false })
+  const [errors, setErrors] = useState({ login: '', password: '' })
+  const [form, setForm] = useState({ login: '', password: '', remember: false })
 
-  const validateEmail = () => {
+  const isEmailOrPhone = (value) => {
+    const trimmed = value.trim()
+    return /\S+@\S+\.\S+/.test(trimmed) || /^\+?[0-9\s\-()]{7,20}$/.test(trimmed)
+  }
+
+  const validateLogin = () => {
     setErrors((prev) => ({
       ...prev,
-      email: /\S+@\S+\.\S+/.test(form.email) ? '' : 'Please enter a valid email address.',
+      login: isEmailOrPhone(form.login) ? '' : 'Enter a valid email address or phone number.',
     }))
   }
 
   const validate = () => {
     const next = {
-      email: /\S+@\S+\.\S+/.test(form.email) ? '' : 'Please enter a valid email address.',
-      password: form.password.length >= 6 ? '' : 'Password must be at least 6 characters.',
+      login: isEmailOrPhone(form.login) ? '' : 'Enter a valid email address or phone number.',
+      password: form.password.length >= 8 ? '' : 'Password must be at least 8 characters.',
     }
     setErrors(next)
-    return !next.email && !next.password
+    return !next.login && !next.password
   }
 
   const submit = async (e) => {
@@ -38,7 +43,7 @@ export default function LoginView() {
     setSubmitting(true)
     try {
       const response = await auth.login(
-        form.email,
+        form.login.trim(),
         form.password,
         form.remember ? 'web-remember' : 'web',
       )
@@ -115,15 +120,15 @@ export default function LoginView() {
 
             <form className="mt-5 space-y-4" onSubmit={submit}>
               <BaseInput
-                id="email"
-                modelValue={form.email}
-                onUpdateModelValue={(v) => setForm((f) => ({ ...f, email: v }))}
-                label="Email"
-                type="email"
-                autocomplete="email"
-                placeholder="you@salon.com"
-                error={errors.email}
-                onBlur={validateEmail}
+                id="login"
+                modelValue={form.login}
+                onUpdateModelValue={(v) => setForm((f) => ({ ...f, login: v }))}
+                label="Email or Phone"
+                type="text"
+                autocomplete="username"
+                placeholder="you@salon.com or +91 9876543210"
+                error={errors.login}
+                onBlur={validateLogin}
                 icon={
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                     <path d="M4 6h16v12H4z" />
