@@ -76,7 +76,7 @@ class User extends Authenticatable
                 return null;
             }
 
-            return Storage::disk('public')->url($this->photo);
+            return asset('storage/' . $this->photo);
         });
     }
 }

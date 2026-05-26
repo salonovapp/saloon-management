@@ -29,6 +29,7 @@ export default function SettingsView() {
   })
   const [selectedPhoto, setSelectedPhoto] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
+  const [photoError, setPhotoError] = useState(false)
   const [profileErrors, setProfileErrors] = useState({})
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileSuccess, setProfileSuccess] = useState(false)
@@ -56,6 +57,7 @@ export default function SettingsView() {
         phone: auth.user.phone || '',
       })
       setPhotoPreview(auth.user.photo || null)
+      setPhotoError(false)
     }
   }, [auth.user])
 
@@ -87,6 +89,7 @@ export default function SettingsView() {
 
     setSelectedPhoto(file)
     setPhotoPreview(URL.createObjectURL(file))
+    setPhotoError(false)
     setProfileErrors((prev) => {
       const next = { ...prev }
       delete next.photo
@@ -219,7 +222,30 @@ export default function SettingsView() {
       setPasswordSaving(false)
     }
   }
+  const newPassword = passwordForm.new_password || ''
+  const isMinLength = newPassword.length >= 8
+  const isMixedCase = /[a-z]/.test(newPassword) && /[A-Z]/.test(newPassword)
+  const hasSymbol = /[\W_]/.test(newPassword)
+  const isMatching = newPassword !== '' && newPassword === passwordForm.new_password_confirmation
 
+  const getPasswordStrength = () => {
+    if (!newPassword) return { percent: 0, text: 'Empty', color: 'bg-slate-200', textClass: 'text-slate-400' }
+    let score = 0
+    if (isMinLength) score++
+    if (isMixedCase) score++
+    if (hasSymbol) score++
+    if (/[0-9]/.test(newPassword)) score++
+
+    if (score <= 1) {
+      return { percent: 25, text: 'Weak', color: 'bg-rose-500', textClass: 'text-rose-500' }
+    } else if (score <= 3) {
+      return { percent: 65, text: 'Medium', color: 'bg-amber-500', textClass: 'text-amber-500' }
+    } else {
+      return { percent: 100, text: 'Strong', color: 'bg-teal-500', textClass: 'text-teal-500' }
+    }
+  }
+
+  const strength = getPasswordStrength()
 
   return (
     <div className="space-y-6">
@@ -294,8 +320,13 @@ export default function SettingsView() {
                   <div className="flex items-center gap-5">
                     <div className="relative group cursor-pointer" onClick={handlePhotoClick}>
                       <div className="w-20 h-20 rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-slate-50 relative flex items-center justify-center">
-                        {photoPreview ? (
-                          <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                        {photoPreview && !photoError ? (
+                          <img
+                            src={photoPreview}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                            onError={() => setPhotoError(true)}
+                          />
                         ) : (
                           <span className="text-2xl font-black text-slate-400">
                             {getInitials(profileForm.name)}
@@ -400,41 +431,92 @@ export default function SettingsView() {
                     </div>
                   )}
 
-                  {/* Fields */}
-                  <div className="space-y-4">
-                    <BaseInput
-                      label="Current Password"
-                      type="password"
-                      modelValue={passwordForm.current_password}
-                      onUpdateModelValue={(v) => setPasswordForm((prev) => ({ ...prev, current_password: v }))}
-                      error={passwordErrors.current_password?.[0]}
-                      required
-                      toggleableType
-                      prefix={KeyRound}
-                    />
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Fields Column */}
+                    <div className="lg:col-span-7 space-y-4">
+                      <BaseInput
+                        label="Current Password"
+                        type="password"
+                        modelValue={passwordForm.current_password}
+                        onUpdateModelValue={(v) => setPasswordForm((prev) => ({ ...prev, current_password: v }))}
+                        error={passwordErrors.current_password?.[0]}
+                        required
+                        toggleableType
+                        prefix={KeyRound}
+                      />
 
-                    <BaseInput
-                      label="New Password"
-                      type="password"
-                      modelValue={passwordForm.new_password}
-                      onUpdateModelValue={(v) => setPasswordForm((prev) => ({ ...prev, new_password: v }))}
-                      error={passwordErrors.new_password?.[0]}
-                      hint="Password must be at least 8 characters and contain mixed case and symbols."
-                      required
-                      toggleableType
-                      prefix={KeyRound}
-                    />
+                      <BaseInput
+                        label="New Password"
+                        type="password"
+                        modelValue={passwordForm.new_password}
+                        onUpdateModelValue={(v) => setPasswordForm((prev) => ({ ...prev, new_password: v }))}
+                        error={passwordErrors.new_password?.[0]}
+                        required
+                        toggleableType
+                        prefix={KeyRound}
+                      />
 
-                    <BaseInput
-                      label="Confirm New Password"
-                      type="password"
-                      modelValue={passwordForm.new_password_confirmation}
-                      onUpdateModelValue={(v) => setPasswordForm((prev) => ({ ...prev, new_password_confirmation: v }))}
-                      error={passwordErrors.new_password_confirmation?.[0]}
-                      required
-                      toggleableType
-                      prefix={KeyRound}
-                    />
+                      <BaseInput
+                        label="Confirm New Password"
+                        type="password"
+                        modelValue={passwordForm.new_password_confirmation}
+                        onUpdateModelValue={(v) => setPasswordForm((prev) => ({ ...prev, new_password_confirmation: v }))}
+                        error={passwordErrors.new_password_confirmation?.[0]}
+                        required
+                        toggleableType
+                        prefix={KeyRound}
+                      />
+                    </div>
+
+                    {/* Requirements / Strength Meter Column */}
+                    <div className="lg:col-span-5 bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4 self-start">
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Security Assistant</h4>
+                        <p className="text-xs text-slate-500 mt-1">Make sure your new password meets these requirements for security.</p>
+                      </div>
+
+                      {/* Strength Meter */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-medium text-slate-500">Password Strength:</span>
+                          <span className={`font-bold ${strength.textClass}`}>{strength.text}</span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-200/80 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${strength.color}`}
+                            style={{ width: `${strength.percent}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Checklist */}
+                      <ul className="space-y-2.5 text-xs">
+                        <li className="flex items-center gap-2.5">
+                          <CheckCircle2 className={`w-4 h-4 transition-colors ${isMinLength ? 'text-teal-600' : 'text-slate-300'}`} />
+                          <span className={isMinLength ? 'text-teal-900 font-medium' : 'text-slate-500'}>
+                            At least 8 characters
+                          </span>
+                        </li>
+                        <li className="flex items-center gap-2.5">
+                          <CheckCircle2 className={`w-4 h-4 transition-colors ${isMixedCase ? 'text-teal-600' : 'text-slate-300'}`} />
+                          <span className={isMixedCase ? 'text-teal-900 font-medium' : 'text-slate-500'}>
+                            Mixed case (uppercase & lowercase)
+                          </span>
+                        </li>
+                        <li className="flex items-center gap-2.5">
+                          <CheckCircle2 className={`w-4 h-4 transition-colors ${hasSymbol ? 'text-teal-600' : 'text-slate-300'}`} />
+                          <span className={hasSymbol ? 'text-teal-900 font-medium' : 'text-slate-500'}>
+                            At least one special character
+                          </span>
+                        </li>
+                        <li className="flex items-center gap-2.5 border-t border-slate-200/60 pt-3 mt-1.5">
+                          <CheckCircle2 className={`w-4 h-4 transition-colors ${isMatching ? 'text-teal-600' : 'text-slate-300'}`} />
+                          <span className={isMatching ? 'text-teal-900 font-medium' : 'text-slate-500'}>
+                            Passwords match
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
 
                   {/* Save Button */}
