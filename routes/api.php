@@ -14,6 +14,41 @@ Route::prefix('v1')->group(function (): void {
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::put('/profile', UpdateProfileController::class);
         Route::put('/password', ChangePasswordController::class);
+        Route::get('/me', function (\Illuminate\Http\Request $request) {
+            $user = $request->user();
+            $saloon = $user->saloon;
+            
+            return response()->json([
+                'data' => [
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'phone' => $user->phone,
+                        'photo' => $user->photo_url,
+                        'role' => $user->role,
+                        'saloon_id' => $user->saloon_id,
+                    ],
+                    'tenant' => $saloon ? [
+                        'id' => $saloon->id,
+                        'name' => $saloon->name,
+                        'plan' => [
+                            'name' => 'Free Trial',
+                            'slug' => 'free',
+                        ],
+                    ] : null,
+                    'permissions' => [
+                        'appointments.view',
+                        'staff.view',
+                        'inventory.view',
+                        'customers.view',
+                        'billing.view',
+                        'analytics.view',
+                        'settings.view',
+                    ],
+                ]
+            ]);
+        });
     });
 
     Route::post('/onboarding/account', [OnboardingController::class, 'account']);

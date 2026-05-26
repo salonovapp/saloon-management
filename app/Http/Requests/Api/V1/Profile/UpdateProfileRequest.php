@@ -25,7 +25,7 @@ class UpdateProfileRequest extends FormRequest
                 'sometimes',
                 'required',
                 'string',
-                'email:rfc,dns',
+                'email',
                 'max:120',
                 Rule::unique('users', 'email')->ignore($userId),
             ],

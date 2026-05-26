@@ -94,9 +94,11 @@ export function AuthProvider({ children }) {
         return mock
       }
 
-      const response = await axios.get('/v1/me', {
-        headers: authHeaders(),
-        withCredentials: true,
+      const response = await axios.get(`${API_BASE_URL}/v1/me`, {
+        headers: {
+          ...authHeaders(),
+          'Accept': 'application/json',
+        },
       })
 
       const data = response.data || {}
@@ -197,7 +199,9 @@ export function AuthProvider({ children }) {
     setLoading(true)
     try {
       if (!USE_MOCK_AUTH) {
-        await axios.post('/v1/logout', {}, { headers: authHeaders(), withCredentials: true })
+        await axios.post(`${API_BASE_URL}/v1/logout`, {}, {
+          headers: { ...authHeaders(), 'Accept': 'application/json' },
+        })
       } else {
         await sleep(150)
       }
