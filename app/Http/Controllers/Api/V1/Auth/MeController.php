@@ -20,7 +20,7 @@ class MeController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $user = $this->userRepository->fresh($user, ['saloon']);
+        $user = $this->userRepository->fresh($user, ['saloon', 'role.permissions']);
 
         return (new CurrentUserResponseResource($user))->response();
     }

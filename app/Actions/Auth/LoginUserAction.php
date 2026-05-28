@@ -43,13 +43,13 @@ class LoginUserAction
     {
         if (AuthIdentifier::isEmail($login)) {
             return User::query()
-                ->with(['saloon'])
+                ->with(['saloon', 'role.permissions'])
                 ->where('email', $login)
                 ->first();
         }
 
         $query = User::query()
-            ->with(['saloon'])
+            ->with(['saloon', 'role.permissions'])
             ->where('phone', $login);
 
         if ($query->count() > 1) {

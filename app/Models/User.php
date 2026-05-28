@@ -28,7 +28,8 @@ class User extends Authenticatable
         'email',
         'phone',
         'photo',
-        'role',
+        'is_system_admin',
+        'role_id',
         'password',
         'saloon_id',
         'onboarding_completed_at',
@@ -59,7 +60,13 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'onboarding_completed_at' => 'datetime',
+            'is_system_admin' => 'boolean',
         ];
+    }
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
     }
 
     public function saloon(): BelongsTo

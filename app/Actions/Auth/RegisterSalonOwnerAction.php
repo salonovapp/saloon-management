@@ -2,6 +2,7 @@
 
 namespace App\Actions\Auth;
 
+use App\Models\Role;
 use App\Models\Saloon;
 use App\Models\User;
 use App\Repositories\Contracts\SaloonRepositoryInterface;
@@ -27,12 +28,17 @@ class RegisterSalonOwnerAction
                 'name' => trim((string) $payload['salon_name']),
             ]);
 
+            $ownerRole = Role::query()
+                ->where('name', 'Owner')
+                ->whereNull('saloon_id')
+                ->first();
+
             $user = $this->userRepository->create([
                 'name' => trim((string) $payload['name']),
                 'email' => strtolower(trim((string) $payload['email'])),
                 'phone' => trim((string) $payload['phone']),
                 'password' => (string) $payload['password'],
-                'role' => 'owner',
+                'role_id' => $ownerRole?->id,
                 'saloon_id' => $saloon->id,
             ]);
 
