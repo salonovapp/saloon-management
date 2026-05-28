@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\V1\Auth\RequestPasswordResetOtpController;
 use App\Http\Controllers\Api\V1\Auth\ResetPasswordWithOtpController;
 use App\Http\Controllers\Api\V1\Auth\VerifyPasswordResetOtpController;
 use App\Http\Controllers\Api\V1\Category\CategoryController;
+use App\Http\Controllers\Api\V1\Permission\PermissionController;
+use App\Http\Controllers\Api\V1\Role\RoleController;
 use App\Http\Controllers\Api\V1\Onboarding\OnboardingController;
 use App\Http\Controllers\Api\V1\Profile\ChangePasswordController;
 use App\Http\Controllers\Api\V1\Profile\UpdateProfileController;
@@ -24,6 +26,9 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/password', ChangePasswordController::class);
         Route::get('/me', MeController::class);
         Route::apiResource('categories', CategoryController::class);
+        Route::get('permissions', [PermissionController::class, 'index']);
+        Route::put('roles/{role}/permissions', [RoleController::class, 'assignPermissions']);
+        Route::apiResource('roles', RoleController::class);
     });
 
     Route::post('/onboarding/account', [OnboardingController::class, 'account']);
