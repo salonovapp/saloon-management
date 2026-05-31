@@ -8,7 +8,10 @@ import CustomersView from '../views/CustomersView.jsx'
 import DashboardView from '../views/DashboardView.jsx'
 import InventoryView from '../views/InventoryView.jsx'
 import SettingsView from '../views/SettingsView.jsx'
+import RolesView from '../views/settings/RolesView.jsx'
+import AssignPermissionsView from '../views/settings/AssignPermissionsView.jsx'
 import StaffView from '../views/StaffView.jsx'
+import CategoriesView from '../views/CategoriesView.jsx'
 import ForgotPasswordView from '../views/auth/ForgotPasswordView.jsx'
 import LoginView from '../views/auth/LoginView.jsx'
 import RegisterView from '../views/auth/RegisterView.jsx'
@@ -99,12 +102,40 @@ export function AppRoutes() {
           <Route path="/onboarding" element={<OnboardingWizard />} />
           <Route path="/onboarding/complete" element={<OnboardingComplete />} />
           <Route path="/dashboard" element={<DashboardView />} />
-          <Route path="/staff" element={<StaffView />} />
-          <Route path="/inventory" element={<InventoryView />} />
-          <Route path="/customers" element={<CustomersView />} />
-          <Route path="/billing" element={<BillingView />} />
-          <Route path="/analytics" element={<AnalyticsView />} />
-          <Route path="/settings" element={<SettingsView />} />
+
+          <Route element={<RequireAuth permission="staff.view" />}>
+            <Route path="/staff" element={<StaffView />} />
+          </Route>
+          
+          <Route element={<RequireAuth permission="inventory.view" />}>
+            <Route path="/inventory" element={<InventoryView />} />
+            <Route path="/categories" element={<CategoriesView />} />
+          </Route>
+
+          <Route element={<RequireAuth permission="customers.view" />}>
+            <Route path="/customers" element={<CustomersView />} />
+          </Route>
+
+          <Route element={<RequireAuth permission="billing.view" />}>
+            <Route path="/billing" element={<BillingView />} />
+          </Route>
+
+          <Route element={<RequireAuth permission="analytics.view" />}>
+            <Route path="/analytics" element={<AnalyticsView />} />
+          </Route>
+
+          <Route element={<RequireAuth permission="settings.view" />}>
+            <Route path="/settings" element={<SettingsView />} />
+          </Route>
+
+          <Route element={<RequireAuth permission="roles.read" />}>
+            <Route path="/roles" element={<RolesView />} />
+          </Route>
+
+          <Route element={<RequireAuth permission="roles.assign_permissions" />}>
+            <Route path="/assign-permissions" element={<AssignPermissionsView />} />
+          </Route>
+
           <Route path="/ui-test" element={<ComponentsTestView />} />
         </Route>
 
