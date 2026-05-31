@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../stores/auth'
 import PlanBadge from '../ui/PlanBadge.jsx'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LayoutDashboard, CalendarDays, Users, PackageOpen, UsersRound, CreditCard, BarChart3, Settings, HelpCircle, Zap, Scissors, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Users, PackageOpen, UsersRound, CreditCard, BarChart3, Settings, HelpCircle, Zap, Scissors, ChevronLeft, ChevronRight, Tags, ShieldCheck, KeyRound } from 'lucide-react'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -16,22 +16,30 @@ const navGroups = [
     title: 'Overview',
     items: [
       { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-      { label: 'Analytics', to: '/analytics', icon: BarChart3 },
+      { label: 'Analytics', to: '/analytics', icon: BarChart3, code: 'analytics.view' },
     ]
   },
   {
     title: 'Operations',
     items: [
-      { label: 'Appointments', to: '/appointments', icon: CalendarDays },
-      { label: 'Customers', to: '/customers', icon: UsersRound },
-      { label: 'Staff', to: '/staff', icon: Users },
-      { label: 'Inventory', to: '/inventory', icon: PackageOpen },
+      { label: 'Appointments', to: '/appointments', icon: CalendarDays, code: 'appointments.view' },
+      { label: 'Customers', to: '/customers', icon: UsersRound, code: 'customers.view' },
+      { label: 'Staff', to: '/staff', icon: Users, code: 'staff.view' },
+      { label: 'Inventory', to: '/inventory', icon: PackageOpen, code: 'inventory.view' },
+      { label: 'Categories', to: '/categories', icon: Tags, code: 'inventory.view' },
     ]
   },
   {
     title: 'Finance',
     items: [
-      { label: 'Billing', to: '/billing', icon: CreditCard },
+      { label: 'Billing', to: '/billing', icon: CreditCard, code: 'billing.view' },
+    ]
+  },
+  {
+    title: 'System',
+    items: [
+      { label: 'Roles', to: '/roles', icon: ShieldCheck, code: 'roles.read' },
+      { label: 'Assign Permissions', to: '/assign-permissions', icon: KeyRound, code: 'roles.assign_permissions' },
     ]
   }
 ]
@@ -102,7 +110,7 @@ export default function AppSidebar({ collapsed = false, onToggleSidebar }) {
               )}
             </AnimatePresence>
             
-            {group.items.map((item) => {
+            {group.items.filter(item => !item.code || auth.can(item.code)).map((item) => {
               const active = isActive(item.to)
               const Icon = item.icon
               
@@ -154,30 +162,31 @@ export default function AppSidebar({ collapsed = false, onToggleSidebar }) {
         ))}
       </div>
 
-      {/* Bottom Footer Area */}
       <div className="flex-shrink-0 p-3 flex flex-col gap-1 border-t border-slate-800/60 bg-slate-900/20">
-        <Link 
-          to="/settings" 
-          className={cn(
-            "group relative flex items-center rounded-xl px-2.5 py-2 text-[13px] font-medium transition-all duration-200",
-            isActive('/settings') ? "text-teal-400 bg-teal-500/10" : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
-          )}
-        >
-          <Settings className="h-4 w-4 shrink-0 text-slate-500 group-hover:text-slate-300" strokeWidth={2} />
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.span 
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, width: 0 }}
-                className="ml-3 whitespace-nowrap overflow-hidden"
-              >
-                Settings
-              </motion.span>
+        {auth.can('settings.view') && (
+          <Link 
+            to="/settings" 
+            className={cn(
+              "group relative flex items-center rounded-xl px-2.5 py-2 text-[13px] font-medium transition-all duration-200",
+              isActive('/settings') ? "text-teal-400 bg-teal-500/10" : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
             )}
-          </AnimatePresence>
-          {collapsed && (
-            <div className="absolute left-14 z-50 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100 pointer-events-none whitespace-nowrap">Settings</div>
-          )}
-        </Link>
+          >
+            <Settings className="h-4 w-4 shrink-0 text-slate-500 group-hover:text-slate-300" strokeWidth={2} />
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.span 
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, width: 0 }}
+                  className="ml-3 whitespace-nowrap overflow-hidden"
+                >
+                  Settings
+                </motion.span>
+              )}
+            </AnimatePresence>
+            {collapsed && (
+              <div className="absolute left-14 z-50 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100 pointer-events-none whitespace-nowrap">Settings</div>
+            )}
+          </Link>
+        )}
         
         <button type="button" className="group relative flex items-center rounded-xl px-2.5 py-2 text-left text-[13px] font-medium text-slate-400 transition-all duration-200 hover:bg-slate-800/50 hover:text-slate-200 w-full">
           <HelpCircle className="h-4 w-4 shrink-0 text-slate-500 group-hover:text-slate-300" strokeWidth={2} />
