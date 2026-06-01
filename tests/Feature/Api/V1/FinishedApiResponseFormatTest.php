@@ -159,22 +159,6 @@ class FinishedApiResponseFormatTest extends TestCase
             'message' => 'Branch step saved.',
         ]);
 
-        $this->postJson('/api/v1/onboarding/services', [
-            'email' => $user->email,
-            'skipped' => false,
-            'services' => [
-                [
-                    'name' => 'Haircut',
-                    'category' => 'Hair',
-                    'duration' => 30,
-                    'price' => 299,
-                    'bufferTime' => 5,
-                ],
-            ],
-        ])->assertExactJson([
-            'message' => 'Services step saved.',
-        ]);
-
         $this->postJson('/api/v1/onboarding/complete', [
             'email' => $user->email,
         ])->assertExactJson([

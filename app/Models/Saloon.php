@@ -27,9 +27,4 @@ class Saloon extends Model
     {
         return $this->hasMany(User::class);
     }
-
-    public function services(): HasMany
-    {
-        return $this->hasMany(SaloonService::class);
-    }
 }

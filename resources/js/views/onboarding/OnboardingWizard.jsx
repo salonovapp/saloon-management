@@ -5,7 +5,6 @@ import { useAuthStore } from '../../stores/auth'
 import BrandLogo from '../../components/ui/BrandLogo.jsx'
 import StepAccount from './steps/StepAccount.jsx'
 import StepBranch from './steps/StepBranch.jsx'
-import StepService from './steps/StepService.jsx'
 
 const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === 'true'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
@@ -24,10 +23,6 @@ export default function OnboardingWizard() {
       plan: auth.planName || 'Free Trial',
     },
     branch: {},
-    service: {
-      skipped: false,
-      services: [],
-    },
   })
 
   const steps = useMemo(() => ([
@@ -43,15 +38,9 @@ export default function OnboardingWizard() {
       subtitle: 'Add branch contact and opening hours',
       component: StepBranch,
     },
-    {
-      id: 'service',
-      title: 'Add First Service',
-      subtitle: 'Create services for online bookings',
-      component: StepService,
-    },
   ]), [])
 
-  const stepKeyByIndex = ['account', 'branch', 'service']
+  const stepKeyByIndex = ['account', 'branch']
   const currentStepKey = stepKeyByIndex[currentStepIndex]
   const handleStepDataUpdate = useCallback((value) => {
     setOnboardingData((previous) => ({
@@ -59,29 +48,6 @@ export default function OnboardingWizard() {
       [currentStepKey]: value,
     }))
   }, [currentStepKey])
-
-  const handleSkipForNow = useCallback(async (serviceData) => {
-    const updatedOnboardingData = {
-      ...onboardingData,
-      service: serviceData,
-    }
-    setOnboardingData(updatedOnboardingData)
-    setSubmitError('')
-    setSubmitting(true)
-    try {
-      await saveStep(2, updatedOnboardingData)
-      if (!USE_MOCK_AUTH) {
-        const email = auth.user?.email || onboardingData.account?.email
-        await axios.post(`${API_BASE_URL}/v1/onboarding/complete`, { email })
-      }
-      auth.markOnboardingCompleted()
-      router('/dashboard')
-    } catch (error) {
-      setSubmitError(error?.response?.data?.message || 'Unable to skip services right now. Please try again.')
-    } finally {
-      setSubmitting(false)
-    }
-  }, [auth, onboardingData, router])
 
   const currentStepData = onboardingData[currentStepKey]
   const currentStepComponent = steps[currentStepIndex].component
@@ -134,15 +100,6 @@ export default function OnboardingWizard() {
       await axios.post(`${API_BASE_URL}/v1/onboarding/branch`, {
         email,
         ...payload.branch,
-      })
-      return
-    }
-
-    if (index === 2) {
-      await axios.post(`${API_BASE_URL}/v1/onboarding/services`, {
-        email,
-        skipped: Boolean(payload.service?.skipped),
-        services: payload.service?.services || [],
       })
     }
   }
@@ -222,7 +179,6 @@ export default function OnboardingWizard() {
             ref: activeStepRef,
             modelValue: currentStepData,
             onUpdateModelValue: handleStepDataUpdate,
-            onSkipForNow: currentStepKey === 'service' ? handleSkipForNow : undefined,
           })}
 
           <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-5">
