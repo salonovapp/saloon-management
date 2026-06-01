@@ -6,10 +6,8 @@ use App\Contracts\Notifications\EmailOtpSenderInterface;
 use App\Contracts\Notifications\OtpNotificationServiceInterface;
 use App\Contracts\Notifications\SmsOtpSenderInterface;
 use App\Repositories\Contracts\SaloonRepositoryInterface;
-use App\Repositories\Contracts\SaloonServiceRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Repositories\Eloquent\SaloonRepository;
-use App\Repositories\Eloquent\SaloonServiceRepository;
 use App\Repositories\Eloquent\UserRepository;
 use App\Services\Notifications\AwsSesEmailOtpSender;
 use App\Services\Notifications\AwsSnsSmsOtpSender;
@@ -27,7 +25,6 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
         $this->app->bind(SaloonRepositoryInterface::class, SaloonRepository::class);
-        $this->app->bind(SaloonServiceRepositoryInterface::class, SaloonServiceRepository::class);
         $this->app->bind(EmailOtpSenderInterface::class, function () {
             return match (config('otp.channels.email.driver', 'log')) {
                 'aws' => new AwsSesEmailOtpSender(config('otp.aws', [])),

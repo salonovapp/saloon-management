@@ -8,7 +8,9 @@ use App\Http\Controllers\Api\V1\Auth\ResetPasswordWithOtpController;
 use App\Http\Controllers\Api\V1\Auth\VerifyPasswordResetOtpController;
 use App\Http\Controllers\Api\V1\Category\CategoryController;
 use App\Http\Controllers\Api\V1\Permission\PermissionController;
+use App\Http\Controllers\Api\V1\Product\ProductController;
 use App\Http\Controllers\Api\V1\Role\RoleController;
+use App\Http\Controllers\Api\V1\Service\ServiceController;
 use App\Http\Controllers\Api\V1\Onboarding\OnboardingController;
 use App\Http\Controllers\Api\V1\Profile\ChangePasswordController;
 use App\Http\Controllers\Api\V1\Profile\UpdateProfileController;
@@ -26,6 +28,8 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/password', ChangePasswordController::class);
         Route::get('/me', MeController::class);
         Route::apiResource('categories', CategoryController::class);
+        Route::apiResource('products', ProductController::class);
+        Route::apiResource('services', ServiceController::class);
         Route::get('permissions', [PermissionController::class, 'index']);
         Route::put('roles/{role}/permissions', [RoleController::class, 'assignPermissions']);
         Route::apiResource('roles', RoleController::class);
@@ -33,6 +37,5 @@ Route::prefix('v1')->group(function (): void {
 
     Route::post('/onboarding/account', [OnboardingController::class, 'account']);
     Route::post('/onboarding/branch', [OnboardingController::class, 'branch']);
-    Route::post('/onboarding/services', [OnboardingController::class, 'services']);
     Route::post('/onboarding/complete', [OnboardingController::class, 'complete']);
 });
