@@ -1,83 +1,68 @@
-# Multi-stage Dockerfile for Laravel + React application
-# Stage 1: Build stage
-FROM node:22-alpine as node-builder
+# Multi-stage Dockerfile for the Laravel API + React SPA.
+# The final image contains PHP-FPM, Composer dependencies, and built Vite assets.
+
+FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app
 
-# Copy package files for Node dependencies
 COPY package*.json ./
-
-# Install Node dependencies
 RUN npm ci
 
-# Copy source files
-COPY . .
-
-# Build React/Vite frontend
+COPY vite.config.js ./
+COPY resources ./resources
 RUN npm run build
 
-# Stage 2: PHP Runtime
-FROM php:8.3-fpm-alpine
-
-# Install system dependencies
-RUN apk add --no-cache \
-    curl \
-    git \
-    zip \
-    unzip \
-    oniguruma-dev \
-    libzip-dev \
-    sqlite-dev \
-    mysql-client \
-    postgresql-client
-
-# Install PHP extensions
-RUN docker-php-ext-configure opcache --enable-opcache && \
-    docker-php-ext-install -j$(nproc) \
-    bcmath \
-    ctype \
-    fileinfo \
-    json \
-    mbstring \
-    openssl \
-    pdo \
-    pdo_sqlite \
-    pdo_mysql \
-    pdo_pgsql \
-    tokenizer \
-    xml \
-    xmlreader \
-    opcache \
-    zip
-
-# Enable mod_rewrite for Apache (if using Apache)
-RUN a2enmod rewrite
-
-# Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+FROM php:8.3-fpm-alpine AS app
 
 WORKDIR /app
 
-# Copy PHP application files
-COPY . .
+RUN apk add --no-cache \
+        bash \
+        curl \
+        git \
+        libzip-dev \
+        oniguruma-dev \
+        postgresql-client \
+        postgresql-dev \
+        unzip \
+        zip \
+    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+    && docker-php-ext-configure opcache --enable-opcache \
+    && docker-php-ext-install -j"$(nproc)" \
+        bcmath \
+        mbstring \
+        opcache \
+        pdo_pgsql \
+        zip \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apk del .build-deps
 
-# Copy built frontend assets from node builder
-COPY --from=node-builder /app/public/build ./public/build
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+COPY composer.json composer.lock ./
+RUN composer install \
+        --no-dev \
+        --no-interaction \
+        --no-progress \
+        --prefer-dist \
+        --optimize-autoloader \
+        --no-scripts
 
-# Set proper permissions
-RUN chown -R www-data:www-data /app && \
-    chmod -R 755 /app && \
-    chmod -R 775 /app/storage /app/bootstrap/cache
+COPY . ./
+COPY --from=frontend-builder /app/public/build ./public/build
+COPY docker/php/entrypoint.sh /usr/local/bin/saloon-entrypoint
 
-# Expose port
+RUN composer dump-autoload --optimize \
+    && chmod +x /usr/local/bin/saloon-entrypoint \
+    && mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/testing storage/framework/views storage/logs bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache public/build \
+    && chmod -R ug+rwX storage bootstrap/cache
+
 EXPOSE 9000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:9000 || exit 1
+    CMD php artisan about --only=environment >/dev/null 2>&1 || exit 1
 
-# Start PHP-FPM
+ENTRYPOINT ["saloon-entrypoint"]
 CMD ["php-fpm"]
