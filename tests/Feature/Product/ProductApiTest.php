@@ -32,7 +32,7 @@ class ProductApiTest extends TestCase
 
         $productId = (int) $createResponse->json('data.product.id');
 
-        $this->getJson('/api/v1/products')
+        $this->getJson('/api/v1/products?page=1&per_page=10')
             ->assertOk()
             ->assertJsonCount(1, 'data.products');
 
@@ -74,5 +74,43 @@ class ProductApiTest extends TestCase
             'is_active' => true,
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['name']);
+    }
+
+    public function test_authenticated_user_can_search_and_paginate_products(): void
+    {
+        $user = User::factory()->create([
+            'phone' => '+917444444444',
+        ]);
+
+        Product::query()->create([
+            'name' => 'Shampoo',
+            'is_active' => true,
+        ]);
+
+        Product::query()->create([
+            'name' => 'Conditioner',
+            'is_active' => false,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/products?search=Shampoo')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.products')
+            ->assertJsonPath('data.products.0.name', 'Shampoo')
+            ->assertJsonPath('data.meta.total', 1);
+
+        $this->getJson('/api/v1/products?is_active=0')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.products')
+            ->assertJsonPath('data.products.0.name', 'Conditioner');
+
+        $this->getJson('/api/v1/products?per_page=1&page=2')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.products')
+            ->assertJsonPath('data.meta.current_page', 2)
+            ->assertJsonPath('data.meta.per_page', 1)
+            ->assertJsonPath('data.meta.total', 2)
+            ->assertJsonPath('data.meta.last_page', 2);
     }
 }

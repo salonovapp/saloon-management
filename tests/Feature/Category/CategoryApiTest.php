@@ -32,7 +32,7 @@ class CategoryApiTest extends TestCase
 
         $categoryId = (int) $createResponse->json('data.category.id');
 
-        $this->getJson('/api/v1/categories')
+        $this->getJson('/api/v1/categories?page=1&per_page=10')
             ->assertOk()
             ->assertJsonCount(1, 'data.categories');
 
@@ -71,11 +71,49 @@ class CategoryApiTest extends TestCase
 
         $category->delete();
 
-        $this->getJson('/api/v1/categories')
+        $this->getJson('/api/v1/categories?page=1&per_page=10')
             ->assertOk()
             ->assertJsonCount(0, 'data.categories');
 
         $this->getJson("/api/v1/categories/{$category->id}")
             ->assertNotFound();
+    }
+
+    public function test_authenticated_user_can_search_and_paginate_categories(): void
+    {
+        $user = User::factory()->create([
+            'phone' => '+915555555555',
+        ]);
+
+        Category::query()->create([
+            'name' => 'Hair Care',
+            'is_active' => true,
+        ]);
+
+        Category::query()->create([
+            'name' => 'Skin Care',
+            'is_active' => false,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/categories?page=1&per_page=10&search=Hair')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.categories')
+            ->assertJsonPath('data.categories.0.name', 'Hair Care')
+            ->assertJsonPath('data.meta.total', 1);
+
+        $this->getJson('/api/v1/categories?page=1&per_page=10&is_active=0')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.categories')
+            ->assertJsonPath('data.categories.0.name', 'Skin Care');
+
+        $this->getJson('/api/v1/categories?page=2&per_page=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.categories')
+            ->assertJsonPath('data.meta.current_page', 2)
+            ->assertJsonPath('data.meta.per_page', 1)
+            ->assertJsonPath('data.meta.total', 2)
+            ->assertJsonPath('data.meta.last_page', 2);
     }
 }

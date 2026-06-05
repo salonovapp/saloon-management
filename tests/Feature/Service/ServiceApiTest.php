@@ -56,7 +56,7 @@ class ServiceApiTest extends TestCase
 
         $serviceId = (int) $createResponse->json('data.service.id');
 
-        $this->getJson('/api/v1/services')
+        $this->getJson('/api/v1/services?page=1&per_page=10')
             ->assertOk()
             ->assertJsonCount(1, 'data.services');
 
@@ -150,5 +150,40 @@ class ServiceApiTest extends TestCase
         $this->deleteJson("/api/v1/services/{$service->id}")->assertOk();
 
         $this->assertDatabaseCount('service_products', 0);
+    }
+
+    public function test_authenticated_user_can_search_and_paginate_services(): void
+    {
+        $user = User::factory()->create([
+            'phone' => '+917333333333',
+        ]);
+
+        Service::query()->create([
+            'name' => 'Hair Wash',
+            'default_price' => 299.50,
+            'duration_minutes' => 30,
+        ]);
+
+        Service::query()->create([
+            'name' => 'Beard Trim',
+            'default_price' => 150,
+            'duration_minutes' => 20,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/services?search=Beard')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.services')
+            ->assertJsonPath('data.services.0.name', 'Beard Trim')
+            ->assertJsonPath('data.meta.total', 1);
+
+        $this->getJson('/api/v1/services?per_page=1&page=2')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.services')
+            ->assertJsonPath('data.meta.current_page', 2)
+            ->assertJsonPath('data.meta.per_page', 1)
+            ->assertJsonPath('data.meta.total', 2)
+            ->assertJsonPath('data.meta.last_page', 2);
     }
 }

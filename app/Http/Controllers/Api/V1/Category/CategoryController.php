@@ -8,22 +8,34 @@ use App\Http\Requests\Api\V1\Category\UpdateCategoryRequest;
 use App\Http\Resources\Api\V1\Category\CategoryResource;
 use App\Http\Resources\Api\V1\Common\MessageResponseResource;
 use App\Models\Category;
+use App\Support\Api\ListQuery;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $categories = Category::query()
-            ->latest('id')
-            ->get();
-
-        return response()->json([
-            'message' => 'Categories fetched successfully.',
-            'data' => [
-                'categories' => CategoryResource::collection($categories)->resolve(),
-            ],
+        $validated = ListQuery::validate($request, [
+            'is_active' => ['sometimes', 'boolean'],
         ]);
+
+        $query = Category::query()->latest('id');
+
+        if (array_key_exists('is_active', $validated)) {
+            $query->where('is_active', (bool) $validated['is_active']);
+        }
+
+        ListQuery::applySearch($query, $validated['search'] ?? null);
+
+        $paginator = ListQuery::paginate($query, $validated);
+
+        return response()->json(ListQuery::responsePayload(
+            'Categories fetched successfully.',
+            'categories',
+            $paginator,
+            CategoryResource::class,
+        ));
     }
 
     public function store(StoreCategoryRequest $request): JsonResponse

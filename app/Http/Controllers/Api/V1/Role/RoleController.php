@@ -10,6 +10,7 @@ use App\Http\Resources\Api\V1\Common\MessageResponseResource;
 use App\Http\Resources\Api\V1\Role\RoleResource;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Api\ListQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -17,8 +18,9 @@ class RoleController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+        $validated = ListQuery::validate($request, [
             'saloon_id' => ['sometimes', 'nullable', 'integer', 'exists:saloons,id'],
+            'is_active' => ['sometimes', 'boolean'],
         ]);
 
         /** @var User $user */
@@ -32,14 +34,20 @@ class RoleController extends Controller
             $query->where('saloon_id', $validated['saloon_id']);
         }
 
-        $roles = $query->get();
+        if (array_key_exists('is_active', $validated)) {
+            $query->where('is_active', (bool) $validated['is_active']);
+        }
 
-        return response()->json([
-            'message' => 'Roles fetched successfully.',
-            'data' => [
-                'roles' => RoleResource::collection($roles)->resolve(),
-            ],
-        ]);
+        ListQuery::applySearch($query, $validated['search'] ?? null);
+
+        $paginator = ListQuery::paginate($query, $validated);
+
+        return response()->json(ListQuery::responsePayload(
+            'Roles fetched successfully.',
+            'roles',
+            $paginator,
+            RoleResource::class,
+        ));
     }
 
     public function store(StoreRoleRequest $request): JsonResponse

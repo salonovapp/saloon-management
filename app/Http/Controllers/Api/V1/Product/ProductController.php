@@ -8,22 +8,34 @@ use App\Http\Requests\Api\V1\Product\UpdateProductRequest;
 use App\Http\Resources\Api\V1\Common\MessageResponseResource;
 use App\Http\Resources\Api\V1\Product\ProductResource;
 use App\Models\Product;
+use App\Support\Api\ListQuery;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $products = Product::query()
-            ->latest('id')
-            ->get();
-
-        return response()->json([
-            'message' => 'Products fetched successfully.',
-            'data' => [
-                'products' => ProductResource::collection($products)->resolve(),
-            ],
+        $validated = ListQuery::validate($request, [
+            'is_active' => ['sometimes', 'boolean'],
         ]);
+
+        $query = Product::query()->latest('id');
+
+        if (array_key_exists('is_active', $validated)) {
+            $query->where('is_active', (bool) $validated['is_active']);
+        }
+
+        ListQuery::applySearch($query, $validated['search'] ?? null);
+
+        $paginator = ListQuery::paginate($query, $validated);
+
+        return response()->json(ListQuery::responsePayload(
+            'Products fetched successfully.',
+            'products',
+            $paginator,
+            ProductResource::class,
+        ));
     }
 
     public function store(StoreProductRequest $request): JsonResponse
