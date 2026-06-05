@@ -1,135 +1,166 @@
-version: '3.9'
-
 services:
-  # PHP Application Service
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: saloon_app
     restart: unless-stopped
-    working_dir: /app
-    expose:
-      - "9000"
     environment:
-      - APP_ENV=${APP_ENV:-local}
-      - APP_DEBUG=${APP_DEBUG:-true}
-      - APP_KEY=${APP_KEY}
-      - APP_URL=${APP_URL:-http://localhost}
-      - APP_NAME=${APP_NAME:-"Saloon Management"}
-      - DB_CONNECTION=${DB_CONNECTION:-sqlite}
-      - DB_HOST=${DB_HOST:-db}
-      - DB_PORT=${DB_PORT:-3306}
-      - DB_DATABASE=${DB_DATABASE:-saloon_db}
-      - DB_USERNAME=${DB_USERNAME:-saloon_user}
-      - DB_PASSWORD=${DB_PASSWORD:-saloon_password}
-      - REDIS_HOST=redis
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
-      - REDIS_PORT=6379
-      - MAIL_MAILER=${MAIL_MAILER:-smtp}
-      - MAIL_HOST=mailpit
-      - MAIL_PORT=1025
-      - MAIL_USERNAME=${MAIL_USERNAME}
-      - MAIL_PASSWORD=${MAIL_PASSWORD}
-      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-"hello@example.com"}
-      - MAIL_FROM_NAME=${APP_NAME:-"Saloon Management"}
-      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-database}
-      - SESSION_DRIVER=${SESSION_DRIVER:-database}
-      - CACHE_STORE=${CACHE_STORE:-redis}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
-      - AWS_BUCKET=${AWS_BUCKET}
+      APP_NAME: ${APP_NAME:-Saloon Management}
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_KEY: ${APP_KEY:-base64:6Y1hBk08HrRCgYSI1KGDExIggXOaEMFbosY4hYyHpnQ=}
+      APP_URL: ${APP_URL:-http://localhost}
+      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:-saloon_db}
+      DB_USERNAME: ${DB_USERNAME:-saloon_user}
+      DB_PASSWORD: ${DB_PASSWORD:-saloon_password}
+      REDIS_CLIENT: ${REDIS_CLIENT:-phpredis}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      CACHE_STORE: ${CACHE_STORE:-redis}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-database}
+      SESSION_DRIVER: ${SESSION_DRIVER:-database}
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@example.com}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Saloon Management}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_BUCKET: ${AWS_BUCKET:-}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      RUN_SEEDERS: ${RUN_SEEDERS:-false}
     volumes:
-      - ./:/app
-      - ./storage/docker/logs/php:/var/log/php
-      - /app/node_modules
-      - /app/vendor
+      - app_public:/app/public
+      - app_storage:/app/storage
+      - app_cache:/app/bootstrap/cache
     networks:
       - saloon_network
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
       mailpit:
         condition: service_started
-      db:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health || exit 1"]
+      test: ["CMD", "php", "artisan", "about", "--only=environment"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
-  # Nginx Web Server
   nginx:
-    image: nginx:alpine
+    image: nginx:1.27-alpine
     container_name: saloon_nginx
     restart: unless-stopped
     ports:
       - "${NGINX_PORT:-80}:80"
-      - "${NGINX_SSL_PORT:-443}:443"
     volumes:
-      - ./:/app
+      - app_public:/app/public:ro
       - ./docker/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
-      - ./storage/docker/logs/nginx:/var/log/nginx
     networks:
       - saloon_network
     depends_on:
-      - app
-    environment:
-      - APP_URL=${APP_URL:-http://localhost}
+      app:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
 
-  # Redis Cache Service
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: saloon_queue
+    restart: unless-stopped
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+    environment:
+      APP_NAME: ${APP_NAME:-Saloon Management}
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_KEY: ${APP_KEY:-base64:6Y1hBk08HrRCgYSI1KGDExIggXOaEMFbosY4hYyHpnQ=}
+      APP_URL: ${APP_URL:-http://localhost}
+      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:-saloon_db}
+      DB_USERNAME: ${DB_USERNAME:-saloon_user}
+      DB_PASSWORD: ${DB_PASSWORD:-saloon_password}
+      REDIS_CLIENT: ${REDIS_CLIENT:-phpredis}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      CACHE_STORE: ${CACHE_STORE:-redis}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-database}
+      SESSION_DRIVER: ${SESSION_DRIVER:-database}
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@example.com}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Saloon Management}
+      RUN_MIGRATIONS: "false"
+      RUN_SEEDERS: "false"
+    volumes:
+      - app_public:/app/public
+      - app_storage:/app/storage
+      - app_cache:/app/bootstrap/cache
+    networks:
+      - saloon_network
+    depends_on:
+      app:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: saloon_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-saloon_db}
+      POSTGRES_USER: ${DB_USERNAME:-saloon_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-saloon_password}
+    ports:
+      - "${DB_PORT_FORWARD:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    networks:
+      - saloon_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   redis:
     image: redis:7-alpine
     container_name: saloon_redis
     restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password}
     command: redis-server --appendonly yes --requirepass "${REDIS_PASSWORD:-redis_password}"
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT_FORWARD:-6379}:6379"
     volumes:
       - redis_data:/data
     networks:
       - saloon_network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD:-redis_password}\" ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # MySQL Database Service
-  db:
-    image: mysql:8.0
-    container_name: saloon_mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-saloon_db}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-saloon_password}
-      MYSQL_USER: ${DB_USERNAME:-saloon_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-saloon_password}
-      MYSQL_ALLOW_EMPTY_PASSWORD: 'no'
-    ports:
-      - "${DB_PORT:-3306}:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    networks:
-      - saloon_network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USERNAME:-saloon_user}", "-p${DB_PASSWORD:-saloon_password}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Mailpit Email Testing Service
   mailpit:
     image: axllent/mailpit:latest
     container_name: saloon_mailpit
@@ -144,28 +175,51 @@ services:
       MP_RETENTION: 12h
       MP_SMTP_AUTH_ACCEPT_ANY: 1
 
-  # PhpMyAdmin for Database Management
-  phpmyadmin:
-    image: phpmyadmin:latest
-    container_name: saloon_phpmyadmin
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: saloon_pgadmin
     restart: unless-stopped
     environment:
-      PMA_HOST: db
-      PMA_USER: ${DB_USERNAME:-saloon_user}
-      PMA_PASSWORD: ${DB_PASSWORD:-saloon_password}
-      PMA_ROOT_PASSWORD: ${DB_PASSWORD:-saloon_password}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:
-      - "${PHPMYADMIN_PORT:-8080}:80"
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
     networks:
       - saloon_network
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: node:22-alpine
+    container_name: saloon_frontend
+    profiles: ["dev"]
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost/api}
+    ports:
+      - "${VITE_PORT:-5173}:5173"
+    volumes:
+      - ./:/app
+      - frontend_node_modules:/app/node_modules
+    networks:
+      - saloon_network
+    depends_on:
+      nginx:
+        condition: service_healthy
 
 volumes:
+  app_public:
+  app_storage:
+  app_cache:
+  postgres_data:
   redis_data:
-    driver: local
-  mysql_data:
-    driver: local
+  pgadmin_data:
+  frontend_node_modules:
 
 networks:
   saloon_network:

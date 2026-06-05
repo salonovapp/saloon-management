@@ -1,37 +1,22 @@
-# Docker Compose Override File
-# This file allows you to customize Docker Compose configuration for your local environment
-# Copy as docker-compose.override.yml and customize as needed
-
-version: '3.9'
-
+# Optional development override. Copy to docker-compose.override.yml when you
+# want live source-code mounts instead of the immutable production-like image.
 services:
   app:
-    # For development, you might want to override some settings
-    environment:
-      - APP_DEBUG=true
-      - LOG_CHANNEL=single
-    # Mount additional volumes for debugging
     volumes:
-      - ./storage/docker/logs:/var/log
-      - ./storage/docker/debug:/tmp/debug
-    # Enable interactive debugging
-    stdin_open: true
-    tty: true
-
-  nginx:
-    # Map additional ports or hostnames
+      - ./:/app
+      - app_vendor:/app/vendor
+      - app_public:/app/public
+      - app_storage:/app/storage
+      - app_cache:/app/bootstrap/cache
     environment:
-      - SERVER_NAME=localhost saloon.local
+      APP_DEBUG: "true"
+  queue:
+    volumes:
+      - ./:/app
+      - app_vendor:/app/vendor
+      - app_public:/app/public
+      - app_storage:/app/storage
+      - app_cache:/app/bootstrap/cache
 
-  # Add additional services or overrides as needed
-  # Example: Add a service for running tests
-  # test:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   command: php artisan test
-  #   volumes:
-  #     - ./:/app
-  #   depends_on:
-  #     - db
-  #     - redis
+volumes:
+  app_vendor:

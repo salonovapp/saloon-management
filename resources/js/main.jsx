@@ -7,7 +7,7 @@ import { AuthProvider } from './stores/auth'
 import axios from 'axios'
 import '../css/app.css'
 
-axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
+axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 const queryClient = new QueryClient({
   defaultOptions: {
