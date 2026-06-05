@@ -146,4 +146,44 @@ class RoleApiTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'data.roles');
     }
+
+    public function test_authenticated_user_can_search_and_paginate_roles(): void
+    {
+        $user = User::factory()->create([
+            'phone' => '+917222222223',
+        ]);
+
+        Role::query()->create([
+            'name' => 'Manager',
+            'is_active' => true,
+            'saloon_id' => null,
+        ]);
+
+        Role::query()->create([
+            'name' => 'Receptionist',
+            'is_active' => false,
+            'saloon_id' => null,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/roles?search=Manager')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.roles')
+            ->assertJsonPath('data.roles.0.name', 'Manager')
+            ->assertJsonPath('data.meta.total', 1);
+
+        $this->getJson('/api/v1/roles?is_active=0')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.roles')
+            ->assertJsonPath('data.roles.0.name', 'Receptionist');
+
+        $this->getJson('/api/v1/roles?per_page=1&page=2')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.roles')
+            ->assertJsonPath('data.meta.current_page', 2)
+            ->assertJsonPath('data.meta.per_page', 1)
+            ->assertJsonPath('data.meta.total', 3)
+            ->assertJsonPath('data.meta.last_page', 3);
+    }
 }

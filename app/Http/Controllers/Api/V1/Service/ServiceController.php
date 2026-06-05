@@ -8,24 +8,31 @@ use App\Http\Requests\Api\V1\Service\UpdateServiceRequest;
 use App\Http\Resources\Api\V1\Common\MessageResponseResource;
 use App\Http\Resources\Api\V1\Service\ServiceResource;
 use App\Models\Service;
+use App\Support\Api\ListQuery;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ServiceController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $services = Service::query()
-            ->with(['serviceProducts.product'])
-            ->latest('id')
-            ->get();
+        $validated = ListQuery::validate($request);
 
-        return response()->json([
-            'message' => 'Services fetched successfully.',
-            'data' => [
-                'services' => ServiceResource::collection($services)->resolve(),
-            ],
-        ]);
+        $query = Service::query()
+            ->with(['serviceProducts.product'])
+            ->latest('id');
+
+        ListQuery::applySearch($query, $validated['search'] ?? null);
+
+        $paginator = ListQuery::paginate($query, $validated);
+
+        return response()->json(ListQuery::responsePayload(
+            'Services fetched successfully.',
+            'services',
+            $paginator,
+            ServiceResource::class,
+        ));
     }
 
     public function store(StoreServiceRequest $request): JsonResponse
