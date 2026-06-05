@@ -32,8 +32,8 @@ docker --version
 # Expected: Docker version X.X.X
 
 # Check Docker Compose version
-docker-compose --version
-# Expected: Docker Compose version X.X.X
+docker compose version
+# Expected: Docker Compose version vX.X.X
 ```
 
 ---
@@ -78,11 +78,8 @@ git checkout docker_container_main
 ### Step 2: Configure Environment Variables
 
 ```bash
-# Copy the Docker environment template
-cp .env.docker.example .env.docker
-
-# Copy the example environment file for Laravel
-cp .env.example .env
+# Copy the Docker-ready environment file used by Compose
+cp .env.docker.example .env
 ```
 
 Edit `.env` to match your needs:
@@ -105,6 +102,7 @@ APP_URL=http://localhost
 DB_CONNECTION=mysql
 DB_HOST=db
 DB_PORT=3306
+DB_FORWARD_PORT=3306
 DB_DATABASE=saloon_db
 DB_USERNAME=saloon_user
 DB_PASSWORD=saloon_password
@@ -128,6 +126,7 @@ mkdir -p storage/docker/logs/php
 mkdir -p storage/docker/logs/nginx
 mkdir -p docker/mysql
 mkdir -p docker/nginx/conf.d
+mkdir -p docker/nginx/ssl
 ```
 
 ### Step 4: Create MySQL Initialization Script
@@ -153,7 +152,7 @@ The Nginx configuration file should already exist at `docker/nginx/conf.d/defaul
 
 ```bash
 # Build the Docker images
-docker-compose build
+docker compose build
 ```
 
 **Output:**
@@ -170,7 +169,7 @@ Building nginx
 
 ```bash
 # Start all services
-docker-compose up -d
+docker compose up -d
 ```
 
 **Output:**
@@ -183,31 +182,24 @@ Creating saloon_nginx ...
 Creating saloon_phpmyadmin ...
 ```
 
-### Step 3: Generate Application Key
+### Step 3: Initialize Laravel
+
+The app container generates a temporary `APP_KEY` when one is not supplied and runs migrations by default (`RUN_MIGRATIONS=true`). To run migrations manually, use:
 
 ```bash
-# Generate Laravel application key
-docker-compose exec app php artisan key:generate
+docker compose exec app php artisan migrate
 ```
 
-### Step 4: Run Database Migrations
+### Step 4: Rebuild Frontend Assets
+
+Frontend assets are built inside the Docker image and served by Nginx from the shared `app_public` volume. After changing frontend code, rebuild and recreate the app/nginx containers:
 
 ```bash
-# Run database migrations
-docker-compose exec app php artisan migrate
+docker compose build app
+docker compose up -d app nginx
 ```
 
-### Step 5: Install Frontend Dependencies
-
-```bash
-# Install Node.js dependencies
-docker-compose exec app npm install
-
-# Build React frontend
-docker-compose exec app npm run build
-```
-
-### Step 6: Access the Application
+### Step 5: Access the Application
 
 Open your browser and navigate to:
 
@@ -223,79 +215,78 @@ Open your browser and navigate to:
 
 ```bash
 # View all running containers
-docker-compose ps
+docker compose ps
 
 # View container logs
-docker-compose logs -f app
+docker compose logs -f app
 
 # View logs for specific service
-docker-compose logs -f nginx
+docker compose logs -f nginx
 
 # Stop all containers
-docker-compose stop
+docker compose stop
 
 # Start all containers
-docker-compose start
+docker compose start
 
 # Restart all containers
-docker-compose restart
+docker compose restart
 
 # Remove containers (data in volumes persists)
-docker-compose down
+docker compose down
 
 # Remove containers and volumes
-docker-compose down -v
+docker compose down -v
 ```
 
 ### Laravel Commands
 
 ```bash
 # Execute Laravel artisan commands
-docker-compose exec app php artisan <command>
+docker compose exec app php artisan <command>
 
 # Examples:
-docker-compose exec app php artisan migrate
-docker-compose exec app php artisan seed:db
-docker-compose exec app php artisan tinker
-docker-compose exec app php artisan cache:clear
-docker-compose exec app php artisan config:clear
-docker-compose exec app php artisan queue:work
+docker compose exec app php artisan migrate
+docker compose exec app php artisan seed:db
+docker compose exec app php artisan tinker
+docker compose exec app php artisan cache:clear
+docker compose exec app php artisan config:clear
+docker compose exec app php artisan queue:work
 ```
 
 ### Database Commands
 
 ```bash
 # Access MySQL CLI
-docker-compose exec db mysql -u saloon_user -psaloon_password saloon_db
+docker compose exec db mysql -u saloon_user -psaloon_password saloon_db
 
 # Create a database backup
-docker-compose exec db mysqldump -u saloon_user -psaloon_password saloon_db > backup.sql
+docker compose exec db mysqldump -u saloon_user -psaloon_password saloon_db > backup.sql
 
 # Restore from backup
-docker-compose exec -T db mysql -u saloon_user -psaloon_password saloon_db < backup.sql
+docker compose exec -T db mysql -u saloon_user -psaloon_password saloon_db < backup.sql
 ```
 
-### NPM/Node Commands
+### Frontend Asset Commands
 
 ```bash
-# Run npm commands inside container
-docker-compose exec app npm install <package-name>
+# Rebuild the Docker image after changing package.json or frontend source
+docker compose build app
+docker compose up -d app nginx
 
-# Run development server
-docker-compose exec app npm run dev
-
-# Build for production
-docker-compose exec app npm run build
+# Optional local development when Node.js is installed on your host
+npm install
+npm run dev
 ```
 
 ### File Permissions
 
 ```bash
 # Fix storage directory permissions
-docker-compose exec app chmod -R 775 storage bootstrap/cache
+docker compose exec app chmod -R 775 storage bootstrap/cache
 
 # Reset permissions
-docker-compose exec app chown -R www-data:www-data storage bootstrap/cache
+docker compose exec app chown -R www-data:www-data storage bootstrap/cache
 ```
 
 ---
@@ -339,30 +330,30 @@ docker-compose exec app chown -R www-data:www-data storage bootstrap/cache
 
 ### Making Code Changes
 
-The application files are mounted as volumes, so changes are reflected immediately:
+The Compose stack runs a production-like image. Rebuild the app image after code changes that need to run inside Docker:
 
 1. **Edit PHP files** in `app/` or `routes/`
-   - Changes take effect immediately
-   - Run `php artisan view:clear` to clear view cache
+   - Rebuild/recreate the app container: `docker compose build app && docker compose up -d app`
+   - Run `docker compose exec app php artisan optimize:clear` if cached config/routes need clearing
 
 2. **Edit React/JavaScript files** in `resources/`
-   - Start the dev server: `npm run dev`
-   - Changes auto-refresh in the browser
+   - Rebuild/recreate app and nginx: `docker compose build app && docker compose up -d app nginx`
+   - For hot reload, run `npm run dev` on your host and configure `VITE_API_BASE_URL=http://localhost/api`
 
 3. **Edit configuration files**
-   - Restart the container: `docker-compose restart app`
+   - Restart or recreate the container: `docker compose up -d --force-recreate app`
 
 ### Running Tests
 
 ```bash
 # Run PHP tests
-docker-compose exec app php artisan test
+docker compose exec app php artisan test
 
 # Run with coverage
-docker-compose exec app php artisan test --coverage
+docker compose exec app php artisan test --coverage
 
 # Run specific test
-docker-compose exec app php artisan test tests/Unit/YourTest.php
+docker compose exec app php artisan test tests/Unit/YourTest.php
 ```
 
 ### Debugging
@@ -370,24 +361,24 @@ docker-compose exec app php artisan test tests/Unit/YourTest.php
 #### Using Laravel Tinker
 
 ```bash
-docker-compose exec app php artisan tinker
+docker compose exec app php artisan tinker
 ```
 
 #### Viewing Logs
 
 ```bash
 # View Laravel logs
-docker-compose exec app tail -f storage/logs/laravel.log
+docker compose exec app tail -f storage/logs/laravel.log
 
 # View Nginx logs
-docker-compose logs nginx
+docker compose logs nginx
 ```
 
 #### Database Inspection
 
 ```bash
 # Access MySQL CLI
-docker-compose exec db mysql -u saloon_user -psaloon_password saloon_db
+docker compose exec db mysql -u saloon_user -psaloon_password saloon_db
 
 # Or use PhpMyAdmin at http://localhost:8080
 ```
@@ -400,25 +391,25 @@ docker-compose exec db mysql -u saloon_user -psaloon_password saloon_db
 
 ```bash
 # Check container logs
-docker-compose logs app
+docker compose logs app
 
 # Rebuild images
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ### Database connection errors
 
 ```bash
 # Verify database is running
-docker-compose ps db
+docker compose ps db
 
 # Check if port is available
 lsof -i :3306
 
 # Restart database
-docker-compose restart db
+docker compose restart db
 ```
 
 ### Port already in use
@@ -426,34 +417,33 @@ docker-compose restart db
 ```bash
 # If port 80 is in use, change NGINX_PORT in .env
 # If port 3306 is in use, change DB_PORT in .env
-# Then restart: docker-compose restart
+# Then restart: docker compose restart
 ```
 
 ### Permission denied errors
 
 ```bash
 # Fix permissions
-docker-compose exec app chmod -R 755 storage
-docker-compose exec app chown -R www-data:www-data storage
+docker compose exec app chmod -R 755 storage
+docker compose exec app chown -R www-data:www-data storage
 ```
 
-### Node modules or vendor not installing
+### Dependencies or frontend assets look stale
 
 ```bash
-# Clear and reinstall
-docker-compose exec app rm -rf node_modules vendor
-docker-compose exec app npm install
-docker-compose exec app composer install
+# Rebuild the image that installs Composer dependencies and builds Vite assets
+docker compose build --no-cache app
+docker compose up -d app nginx
 ```
 
 ### Container keeps restarting
 
 ```bash
 # Check logs for errors
-docker-compose logs app
+docker compose logs app
 
 # Rebuild without cache
-docker-compose build --no-cache app
+docker compose build --no-cache app
 ```
 
 ---
@@ -487,19 +477,15 @@ cd saloon-management
 git checkout docker_container_main
 
 # Configure
-cp .env.docker.example .env.docker
-cp .env.example .env
-mkdir -p storage/docker/logs/{php,nginx} docker/mysql docker/nginx/conf.d
+cp .env.docker.example .env
+mkdir -p storage/docker/logs/{php,nginx} docker/mysql docker/nginx/conf.d docker/nginx/ssl
 
 # Run
-docker-compose build
-docker-compose up -d
+docker compose build
+docker compose up -d
 
-# Initialize
-docker-compose exec app php artisan key:generate
-docker-compose exec app php artisan migrate
-docker-compose exec app npm install
-docker-compose exec app npm run build
+# Verify migrations
+docker compose exec app php artisan migrate:status
 
 # Access
 # Application: http://localhost
@@ -515,5 +501,5 @@ For issues or questions, please create an issue on the [GitHub repository](https
 
 ---
 
-**Last Updated**: June 2, 2026
-**Docker Setup Version**: 1.0
+**Last Updated**: June 5, 2026
+**Docker Setup Version**: 1.1

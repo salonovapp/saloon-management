@@ -1,83 +1,60 @@
-# Multi-stage Dockerfile for Laravel + React application
-# Stage 1: Build stage
-FROM node:22-alpine as node-builder
+# Multi-stage Dockerfile for Laravel API + Vite/React frontend
+FROM node:22-alpine AS frontend-builder
 
 WORKDIR /app
 
-# Copy package files for Node dependencies
 COPY package*.json ./
-
-# Install Node dependencies
 RUN npm ci
 
-# Copy source files
 COPY . .
-
-# Build React/Vite frontend
+ARG VITE_API_BASE_URL=/api
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 RUN npm run build
 
-# Stage 2: PHP Runtime
-FROM php:8.3-fpm-alpine
+FROM php:8.3-fpm-alpine AS runtime
 
-# Install system dependencies
 RUN apk add --no-cache \
+    bash \
     curl \
     git \
-    zip \
-    unzip \
-    oniguruma-dev \
-    libzip-dev \
-    sqlite-dev \
     mysql-client \
-    postgresql-client
+    oniguruma-dev \
+    postgresql-dev \
+    sqlite-dev \
+    unzip \
+    zip \
+    libzip-dev \
+    && docker-php-ext-configure opcache --enable-opcache \
+    && docker-php-ext-install -j$(nproc) \
+        bcmath \
+        mbstring \
+        opcache \
+        pdo_mysql \
+        pdo_pgsql \
+        pdo_sqlite \
+        zip
 
-# Install PHP extensions
-RUN docker-php-ext-configure opcache --enable-opcache && \
-    docker-php-ext-install -j$(nproc) \
-    bcmath \
-    ctype \
-    fileinfo \
-    json \
-    mbstring \
-    openssl \
-    pdo \
-    pdo_sqlite \
-    pdo_mysql \
-    pdo_pgsql \
-    tokenizer \
-    xml \
-    xmlreader \
-    opcache \
-    zip
-
-# Enable mod_rewrite for Apache (if using Apache)
-RUN a2enmod rewrite
-
-# Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 
 WORKDIR /app
 
-# Copy PHP application files
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+
 COPY . .
+COPY --from=frontend-builder /app/dist ./public
+COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint
 
-# Copy built frontend assets from node builder
-COPY --from=node-builder /app/public/build ./public/build
+RUN composer dump-autoload --optimize --no-dev \
+    && chmod +x /usr/local/bin/docker-entrypoint \
+    && chown -R www-data:www-data /app \
+    && chmod -R 755 /app \
+    && chmod -R 775 /app/storage /app/bootstrap/cache
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-# Set proper permissions
-RUN chown -R www-data:www-data /app && \
-    chmod -R 755 /app && \
-    chmod -R 775 /app/storage /app/bootstrap/cache
-
-# Expose port
 EXPOSE 9000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:9000 || exit 1
+    CMD php-fpm -t || exit 1
 
-# Start PHP-FPM
+ENTRYPOINT ["docker-entrypoint"]
 CMD ["php-fpm"]
