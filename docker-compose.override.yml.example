@@ -1,0 +1,22 @@
+# Optional development override. Copy to docker-compose.override.yml when you
+# want live source-code mounts instead of the immutable production-like image.
+services:
+  app:
+    volumes:
+      - ./:/app
+      - app_vendor:/app/vendor
+      - app_public:/app/public
+      - app_storage:/app/storage
+      - app_cache:/app/bootstrap/cache
+    environment:
+      APP_DEBUG: "true"
+  queue:
+    volumes:
+      - ./:/app
+      - app_vendor:/app/vendor
+      - app_public:/app/public
+      - app_storage:/app/storage
+      - app_cache:/app/bootstrap/cache
+
+volumes:
+  app_vendor:
