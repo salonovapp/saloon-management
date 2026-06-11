@@ -17,6 +17,7 @@ import TwoFactorView from '../views/auth/TwoFactorView.jsx'
 import ComponentsTestView from '../views/ComponentsTestView.jsx'
 import OnboardingComplete from '../views/onboarding/OnboardingComplete.jsx'
 import OnboardingWizard from '../views/onboarding/OnboardingWizard.jsx'
+import AdminOnboardingPage from '../views/admin/onboarding/AdminOnboardingPage.jsx'
 
 const authLayoutPaths = new Set([
   '/login',
@@ -26,6 +27,7 @@ const authLayoutPaths = new Set([
   '/verify-2fa',
   '/onboarding',
   '/onboarding/complete',
+  '/admin/onboarding',
 ])
 
 export function isAuthLayoutPath(pathname) {
@@ -98,6 +100,7 @@ export function AppRoutes() {
         <Route element={<RequireAuth />}>
           <Route path="/onboarding" element={<OnboardingWizard />} />
           <Route path="/onboarding/complete" element={<OnboardingComplete />} />
+          <Route path="/admin/onboarding" element={<AdminOnboardingPage />} />
           <Route path="/dashboard" element={<DashboardView />} />
           <Route path="/staff" element={<StaffView />} />
           <Route path="/inventory" element={<InventoryView />} />
