@@ -17,10 +17,17 @@ class Saloon extends Model
         'whatsapp',
         'gst_number',
         'working_hours',
+        'payment_type',
+        'payment_amount',
+        'transaction_id',
+        'is_active',
+        'referral_code',
     ];
 
     protected $casts = [
         'working_hours' => 'array',
+        'payment_amount' => 'decimal:2',
+        'is_active' => 'boolean',
     ];
 
     public function users(): HasMany
@@ -28,8 +35,13 @@ class Saloon extends Model
         return $this->hasMany(User::class);
     }
 
-    public function services(): HasMany
+    public function branches(): HasMany
     {
-        return $this->hasMany(SaloonService::class);
+        return $this->hasMany(SaloonBranch::class);
+    }
+
+    public function salonServiceProducts(): HasMany
+    {
+        return $this->hasMany(SalonServiceProduct::class);
     }
 }

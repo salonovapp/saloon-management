@@ -1,0 +1,49 @@
+# Git Cheat Sheet & Common Workflow Commands
+
+### 1. Commit and Push Changes in Your Current Branch (dev_vraj)
+To save your work and push your commits:
+```bash
+# Check modified files
+git status
+
+# Stage all changes
+git add .
+
+# Commit changes with a descriptive message
+git commit -m "feat: fix profile photo loading and revamp change password UI"
+
+# Push the commits to your remote branch
+git push origin dev_vraj
+```
+
+---
+
+### 2. Pull the Latest Code from the Main Branch and Merge It
+To sync your branch with any new updates from the `main` branch:
+```bash
+# Switch to the main branch
+git checkout main
+
+# Pull the latest changes from the remote main branch
+git pull origin main
+
+# Switch back to your working branch (dev_vraj)
+git checkout dev_vraj
+
+# Merge the latest main branch updates into your branch
+git merge main
+```
+
+---
+
+### 3. Quick Branch Switching
+```bash
+# Switch to another branch
+git checkout <branch-name>
+
+# Create and switch to a new branch
+git checkout -b <new-branch-name>
+
+# List all local branches
+git branch
+```

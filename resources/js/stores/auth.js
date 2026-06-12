@@ -8,30 +8,61 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 const sleep = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms))
 
-const buildMockSession = (email) => ({
-  token: MOCK_TOKEN,
-  user: {
-    id: 1,
-    name: 'Salon Owner',
-    email: email || 'owner@salonos.test',
-    role: 'owner',
-    roles: ['owner'],
-  },
-  tenant: {
-    id: 1,
-    name: 'salonovapp',
-    plan: { name: 'Free Trial', slug: 'free' },
-  },
-  permissions: [
-    'appointments.view',
-    'staff.view',
-    'inventory.view',
-    'customers.view',
-    'billing.view',
-    'analytics.view',
-    'settings.view',
-  ],
-})
+const buildMockSession = (identifier) => {
+  const isSysAdmin = identifier === 'admin@salonos.com'
+  return {
+    token: MOCK_TOKEN,
+    is_system_admin: isSysAdmin,
+    user: {
+      id: 1,
+      name: isSysAdmin ? 'System Admin' : 'Salon Owner',
+      email: String(identifier || '').includes('@') ? identifier : 'owner@salonos.test',
+      phone: String(identifier || '').includes('@') ? null : (identifier || null),
+      is_system_admin: isSysAdmin,
+      role_id: isSysAdmin ? null : 1,
+      saloon_id: isSysAdmin ? null : 1,
+    },
+    tenant: isSysAdmin ? null : {
+      id: 1,
+      name: 'salonovapp',
+      plan: { name: 'Free Trial', slug: 'free' },
+    },
+    role: isSysAdmin ? null : {
+      id: 1,
+      name: 'Owner',
+      is_active: true,
+      saloon_id: 1,
+      permissions: [ { code: 'appointments.view' } ]
+    },
+    permissions: isSysAdmin ? [
+      'appointments.view',
+      'staff.view',
+      'inventory.view',
+      'customers.view',
+      'billing.view',
+      'analytics.view',
+      'settings.view',
+      'roles.read',
+      'roles.create',
+      'roles.update',
+      'roles.delete',
+      'roles.assign_permissions'
+    ] : [
+      'appointments.view',
+      'staff.view',
+      'inventory.view',
+      'customers.view',
+      'billing.view',
+      'analytics.view',
+      'settings.view',
+      'roles.read',
+      'roles.create',
+      'roles.update',
+      'roles.delete',
+      'roles.assign_permissions'
+    ],
+  }
+}
 
 const AuthContext = createContext(null)
 
@@ -44,18 +75,8 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(false)
   const [initialized, setInitialized] = useState(false)
-
-  const isOwner = useMemo(() => {
-    const role = user?.role || user?.role_name
-    const roles = user?.roles || []
-    return role === 'owner' || roles.includes('owner')
-  }, [user])
-
-  const isManager = useMemo(() => {
-    const role = user?.role || user?.role_name
-    const roles = user?.roles || []
-    return role === 'manager' || roles.includes('manager')
-  }, [user])
+  const [role, setRole] = useState(null)
+  const [isSystemAdmin, setIsSystemAdmin] = useState(false)
 
   const planName = useMemo(() => (
     tenant?.plan?.name || tenant?.plan_name || tenant?.subscription_plan || null
@@ -72,6 +93,8 @@ export function AuthProvider({ children }) {
     setUser(null)
     setToken(null)
     setTenant(null)
+    setRole(null)
+    setIsSystemAdmin(false)
     setShouldOnboard(false)
     setPermissions([])
     setIsAuthenticated(false)
@@ -81,12 +104,12 @@ export function AuthProvider({ children }) {
     setShouldOnboard(false)
   }, [])
 
-  const fetchMe = useCallback(async () => {
+  const fetchMe = useCallback(async (overrideToken = null) => {
     setLoading(true)
     try {
       if (USE_MOCK_AUTH) {
         await sleep(200)
-        const mock = buildMockSession(user?.email || 'owner@salonos.test')
+        const mock = buildMockSession(user?.email || user?.phone || 'owner@salonos.test')
         setUser(mock.user)
         setTenant(mock.tenant)
         setPermissions(mock.permissions)
@@ -94,17 +117,24 @@ export function AuthProvider({ children }) {
         return mock
       }
 
-      const response = await axios.get('/v1/me', {
-        headers: authHeaders(),
-        withCredentials: true,
+      const activeToken = overrideToken || token
+      const currentHeaders = activeToken ? { Authorization: `Bearer ${activeToken}` } : {}
+
+      const response = await axios.get(`${API_BASE_URL}/v1/me`, {
+        headers: {
+          ...currentHeaders,
+          'Accept': 'application/json',
+        },
       })
 
       const data = response.data || {}
       const payload = data.data || data
-      setUser(payload.user || data.user || null)
-      setTenant(payload.tenant || data.tenant || null)
-      setPermissions(payload.permissions || data.permissions || [])
-      setIsAuthenticated(Boolean(payload.user || data.user))
+      setUser(payload.user || null)
+      setTenant(payload.tenant || null)
+      setRole(payload.role || null)
+      setIsSystemAdmin(Boolean(payload.is_system_admin))
+      setPermissions(payload.permissions || [])
+      setIsAuthenticated(Boolean(payload.user))
       return payload
     } catch (error) {
       const status = error?.response?.status
@@ -114,7 +144,7 @@ export function AuthProvider({ children }) {
       }
 
       if (token) {
-        const mock = buildMockSession(user?.email || 'owner@salonos.test')
+        const mock = buildMockSession(user?.email || user?.phone || 'owner@salonos.test')
         setUser(mock.user)
         setTenant(mock.tenant)
         setPermissions(mock.permissions)
@@ -124,20 +154,22 @@ export function AuthProvider({ children }) {
 
       setUser(null)
       setTenant(null)
+      setRole(null)
+      setIsSystemAdmin(false)
       setPermissions([])
       setIsAuthenticated(false)
       throw error
     } finally {
       setLoading(false)
     }
-  }, [authHeaders, token, user?.email])
+  }, [authHeaders, token, user?.email, user?.phone])
 
-  const login = useCallback(async (email, password, deviceName = 'web') => {
+  const login = useCallback(async (login, password, deviceName = 'web') => {
     setLoading(true)
     try {
       if (USE_MOCK_AUTH) {
         await sleep()
-        const mock = buildMockSession(email)
+        const mock = buildMockSession(login)
         setToken(mock.token)
         setUser(mock.user)
         setTenant(mock.tenant)
@@ -152,7 +184,7 @@ export function AuthProvider({ children }) {
       }
 
       const response = await axios.post(`${API_BASE_URL}/v1/public/login`, {
-        email,
+        login,
         password,
         device_name: deviceName,
       })
@@ -163,13 +195,16 @@ export function AuthProvider({ children }) {
       if (nextToken) localStorage.setItem(TOKEN_KEY, nextToken)
       else localStorage.removeItem(TOKEN_KEY)
 
-      setUser(data.user || data?.data?.user || null)
-      setTenant(data.tenant || data?.data?.tenant || null)
-      setShouldOnboard(Boolean(data.should_onboard || data?.data?.should_onboard))
-      setPermissions(data.permissions || data?.data?.permissions || [])
+      const payload = data.data || data
+      setUser(payload.user || null)
+      setTenant(payload.tenant || null)
+      setRole(payload.role || null)
+      setIsSystemAdmin(Boolean(payload.is_system_admin))
+      setShouldOnboard(Boolean(payload.should_onboard))
+      setPermissions(payload.permissions || [])
 
       if (!(data.user || data?.data?.user)) {
-        await fetchMe()
+        await fetchMe(nextToken)
       } else {
         setIsAuthenticated(true)
       }
@@ -178,10 +213,12 @@ export function AuthProvider({ children }) {
     } catch (error) {
       if (USE_MOCK_AUTH) {
         await sleep()
-        const mock = buildMockSession(email)
+        const mock = buildMockSession(login)
         setToken(mock.token)
         setUser(mock.user)
         setTenant(mock.tenant)
+        setRole(mock.role)
+        setIsSystemAdmin(mock.is_system_admin)
         setPermissions(mock.permissions)
         setIsAuthenticated(true)
         localStorage.setItem(TOKEN_KEY, mock.token)
@@ -197,7 +234,9 @@ export function AuthProvider({ children }) {
     setLoading(true)
     try {
       if (!USE_MOCK_AUTH) {
-        await axios.post('/v1/logout', {}, { headers: authHeaders(), withCredentials: true })
+        await axios.post(`${API_BASE_URL}/v1/logout`, {}, {
+          headers: { ...authHeaders(), 'Accept': 'application/json' },
+        })
       } else {
         await sleep(150)
       }
@@ -210,11 +249,11 @@ export function AuthProvider({ children }) {
     }
   }, [authHeaders, clearAuthState])
 
-  const can = useCallback((permission) => {
-    if (!permission) return true
-    if (isOwner) return true
-    return permissions.includes(permission)
-  }, [isOwner, permissions])
+  const can = useCallback((code) => {
+    if (!code) return true
+    if (isSystemAdmin) return true
+    return permissions.includes(code)
+  }, [isSystemAdmin, permissions])
 
   const initialize = useCallback(async () => {
     if (initialized) return
@@ -222,7 +261,7 @@ export function AuthProvider({ children }) {
     if (savedToken) {
       setToken(savedToken)
       try {
-        await fetchMe()
+        await fetchMe(savedToken)
       } catch {
         // handled
       }
@@ -236,13 +275,13 @@ export function AuthProvider({ children }) {
     user,
     token,
     tenant,
+    role,
+    isSystemAdmin,
     shouldOnboard,
     permissions,
     isAuthenticated,
     loading,
     initialized,
-    isOwner,
-    isManager,
     isFree,
     planName,
     authHeaders,
@@ -254,8 +293,8 @@ export function AuthProvider({ children }) {
     can,
     initialize,
   }), [
-    user, token, tenant, shouldOnboard, permissions, isAuthenticated, loading, initialized,
-    isOwner, isManager, isFree, planName,
+    user, token, tenant, role, isSystemAdmin, shouldOnboard, permissions, isAuthenticated, loading, initialized,
+    isFree, planName,
     authHeaders, clearAuthState, markOnboardingCompleted, login, logout, fetchMe, can, initialize,
   ])
 

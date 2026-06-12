@@ -150,7 +150,7 @@ export default function AppHeader({ onToggleSidebar }) {
                 >
                   <div className="px-3 py-2.5 mb-1 border-b border-slate-100">
                     <p className="text-sm font-medium text-slate-900 truncate">{auth.user?.name}</p>
-                    <p className="text-xs text-slate-500 truncate">{auth.user?.email}</p>
+                    <p className="text-xs text-slate-500 truncate">{auth.user?.email || auth.user?.phone || '-'}</p>
                   </div>
                   
                   <div className="px-1 py-1">

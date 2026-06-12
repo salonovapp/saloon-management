@@ -3,33 +3,59 @@
 namespace App\Actions\Auth;
 
 use App\Models\User;
+use App\Repositories\Contracts\UserRepositoryInterface;
+use App\Support\AuthIdentifier;
 use Illuminate\Support\Facades\Hash;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class LoginUserAction
 {
+    public function __construct(
+        private readonly UserRepositoryInterface $userRepository,
+    ) {}
+
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      * @return array{user: User, token: string, should_onboard: bool}
      */
     public function execute(array $payload): array
     {
-        $email = strtolower(trim((string) $payload['email']));
+        $login = AuthIdentifier::normalize((string) $payload['login']);
         $password = (string) $payload['password'];
         $deviceName = trim((string) ($payload['device_name'] ?? 'web'));
 
-        $user = User::query()->where('email', $email)->first();
+        $user = $this->resolveUser($login);
 
         if (! $user || ! Hash::check($password, $user->password)) {
-            throw new HttpException(422, 'Invalid email or password.');
+            throw new HttpException(422, 'Invalid login or password.');
         }
 
-        $token = $user->createToken($deviceName !== '' ? $deviceName : 'web')->plainTextToken;
+        $token = $this->userRepository->createToken($user, $deviceName !== '' ? $deviceName : 'web');
 
         return [
             'user' => $user,
             'token' => $token,
             'should_onboard' => is_null($user->onboarding_completed_at),
         ];
+    }
+
+    private function resolveUser(string $login): ?User
+    {
+        if (AuthIdentifier::isEmail($login)) {
+            return User::query()
+                ->with(['saloon', 'role.permissions'])
+                ->where('email', $login)
+                ->first();
+        }
+
+        $query = User::query()
+            ->with(['saloon', 'role.permissions'])
+            ->where('phone', $login);
+
+        if ($query->count() > 1) {
+            throw new HttpException(422, 'Multiple users found for the provided phone number.');
+        }
+
+        return $query->first();
     }
 }

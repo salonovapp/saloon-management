@@ -25,11 +25,17 @@ class UpdateProfileRequest extends FormRequest
                 'sometimes',
                 'required',
                 'string',
-                'email:rfc,dns',
+                'email',
                 'max:120',
                 Rule::unique('users', 'email')->ignore($userId),
             ],
-            'phone' => ['sometimes', 'nullable', 'string', 'regex:/^\+?[0-9\s\-()]{7,20}$/'],
+            'phone' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'regex:/^\+?[0-9\s\-()]{7,20}$/',
+                Rule::unique('users', 'phone')->ignore($userId),
+            ],
             'photo' => ['sometimes', 'nullable', 'image', 'max:2048'],
         ];
     }

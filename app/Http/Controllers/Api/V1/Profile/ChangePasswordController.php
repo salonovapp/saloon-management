@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Profile;
 use App\Actions\Profile\ChangeUserPasswordAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Profile\ChangePasswordRequest;
+use App\Http\Resources\Api\V1\Common\MessageResponseResource;
 use Illuminate\Http\JsonResponse;
 
 class ChangePasswordController extends Controller
@@ -21,8 +22,8 @@ class ChangePasswordController extends Controller
             $request->validated(),
         );
 
-        return response()->json([
+        return (new MessageResponseResource([
             'message' => 'Password changed successfully.',
-        ]);
+        ]))->response();
     }
 }

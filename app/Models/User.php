@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -24,12 +25,17 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'firstname',
+        'lastname',
         'email',
         'phone',
         'photo',
-        'role',
+        'is_system_admin',
+        'role_id',
         'password',
         'saloon_id',
+        'branch_id',
+        'is_active',
         'onboarding_completed_at',
     ];
 
@@ -58,12 +64,29 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'onboarding_completed_at' => 'datetime',
+            'is_system_admin' => 'boolean',
+            'is_active' => 'boolean',
         ];
+    }
+
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
     }
 
     public function saloon(): BelongsTo
     {
         return $this->belongsTo(Saloon::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(SaloonBranch::class, 'branch_id');
+    }
+
+    public function passwordResetOtps(): HasMany
+    {
+        return $this->hasMany(PasswordResetOtp::class);
     }
 
     /**
@@ -76,7 +99,7 @@ class User extends Authenticatable
                 return null;
             }
 
-            return Storage::disk('public')->url($this->photo);
+            return asset('storage/' . $this->photo);
         });
     }
 }

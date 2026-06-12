@@ -3,11 +3,17 @@
 namespace App\Actions\Profile;
 
 use App\Models\User;
+use App\Repositories\Contracts\UserRepositoryInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 class UpdateUserProfileAction
 {
+    public function __construct(
+        private readonly UserRepositoryInterface $userRepository,
+    ) {
+    }
+
     /**
      * @param array<string, mixed> $payload
      */
@@ -38,9 +44,9 @@ class UpdateUserProfileAction
         }
 
         if ($updates !== []) {
-            $user->update($updates);
+            $this->userRepository->update($user, $updates);
         }
 
-        return $user->fresh();
+        return $this->userRepository->fresh($user);
     }
 }
