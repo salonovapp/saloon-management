@@ -56,10 +56,15 @@ export default function SalonInfoStep() {
               <BaseSelect
                 id="salon-payment_type"
                 label="Payment Type"
+                required
                 placeholder="Select payment type"
                 options={PAYMENT_TYPES}
                 error={salonErrors.payment_type?.message}
-                {...field}
+                value={field.value ?? ''}
+                onChange={(e) => field.onChange(e.target.value || undefined)}
+                onBlur={field.onBlur}
+                name={field.name}
+                ref={field.ref}
               />
             )}
           />

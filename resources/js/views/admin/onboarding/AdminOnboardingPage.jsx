@@ -2,7 +2,7 @@ import React, { useCallback, useRef, useState } from 'react'
 import { FormProvider, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, ChevronDown, ChevronUp, Loader2, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp, ShieldAlert } from 'lucide-react'
 import { useAuthStore } from '../../../stores/auth'
 import { submitOnboarding } from '../../../services/adminOnboardingService.js'
 import { onboardingSchema } from './onboardingSchema.js'
@@ -24,7 +24,7 @@ const SECTIONS = [
 const DEFAULT_VALUES = {
   salon: {
     business_name: '',
-    payment_type: '',
+    payment_type: undefined,
     amount: '',
     transaction_id: '',
     active: true,
@@ -182,6 +182,12 @@ export default function AdminOnboardingPage() {
   const onSubmit = async (data) => {
     setGlobalError('')
     setForbidden(false)
+
+    if (!auth.token) {
+      setGlobalError('Authentication token is missing. Please log in again.')
+      return
+    }
+
     setSubmitting(true)
 
     // Clean up empty service_products and empty password

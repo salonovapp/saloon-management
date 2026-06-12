@@ -66,7 +66,7 @@ function RequireAuth({ permission }) {
     return <Navigate to={`/login?redirect=${redirect}`} replace />
   }
 
-  if (auth.shouldOnboard && !location.pathname.startsWith('/onboarding')) {
+  if (auth.shouldOnboard && !location.pathname.startsWith('/onboarding') && !location.pathname.startsWith('/admin/onboarding')) {
     return <Navigate to="/onboarding" replace />
   }
 

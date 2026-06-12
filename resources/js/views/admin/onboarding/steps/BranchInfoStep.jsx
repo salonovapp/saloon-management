@@ -20,7 +20,6 @@ export default function BranchInfoStep() {
   const {
     register,
     control,
-    setValue,
     formState: { errors },
   } = useFormContext()
 

@@ -1,15 +1,28 @@
 import { z } from 'zod'
 
+// ---------------------------------------------------------------------------
+// Zod v4 compatible schemas
+// In Zod v4, enum custom errors use { error: 'message' } not errorMap.
+// z.coerce.number() on empty string "" returns 0 (coerces via Number("") → 0)
+// ---------------------------------------------------------------------------
+
 export const salonSchema = z.object({
   business_name: z.string().min(1, 'Business name is required'),
+
+  // Zod v4 enum: custom error via second arg string or { error: '...' }
   payment_type: z.enum(['Monthly', 'Quarterly', 'Yearly', 'One-time'], {
-    errorMap: () => ({ message: 'Select a payment type' }),
+    error: 'Select a payment type',
   }),
+
+  // coerce handles string→number from HTML inputs; NaN→fail
   amount: z.coerce
-    .number({ invalid_type_error: 'Amount must be a number' })
+    .number({ error: 'Amount must be a number' })
     .min(0, 'Amount must be 0 or more'),
+
   transaction_id: z.string().min(1, 'Transaction ID is required'),
+
   active: z.boolean().default(true),
+
   referral_code: z.string().optional().default(''),
 })
 
@@ -38,6 +51,7 @@ export const ownerSchema = z.object({
     .string()
     .min(1, 'Phone is required')
     .regex(/^\d{10}$/, 'Phone must be exactly 10 digits'),
+  // password is optional — empty string is acceptable (backend auto-generates)
   password: z.string().optional().default(''),
   active: z.boolean().default(true),
 })
@@ -46,10 +60,10 @@ export const serviceProductSchema = z.object({
   service: z.string().min(1, 'Service name is required'),
   product: z.string().min(1, 'Product is required'),
   price: z.coerce
-    .number({ invalid_type_error: 'Price must be a number' })
+    .number({ error: 'Price must be a number' })
     .min(0, 'Price must be 0 or more'),
   duration: z.coerce
-    .number({ invalid_type_error: 'Duration must be a number' })
+    .number({ error: 'Duration must be a number' })
     .min(1, 'Duration must be at least 1 minute'),
   active: z.boolean().default(true),
 })
