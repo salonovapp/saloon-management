@@ -86,10 +86,35 @@ class AdminOnboardingAction
             $serviceProducts = [];
 
             foreach ($payload['service_products'] ?? [] as $serviceProductData) {
+                if (isset($serviceProductData['service_id'])) {
+                    $serviceId = (int) $serviceProductData['service_id'];
+                } else {
+                    $serviceName = trim((string) $serviceProductData['service_name']);
+                    $service = \App\Models\Service::query()->firstOrCreate(
+                        ['name' => $serviceName],
+                        [
+                            'default_price' => $serviceProductData['price'],
+                            'duration_minutes' => (int) $serviceProductData['duration_minutes'],
+                        ]
+                    );
+                    $serviceId = $service->id;
+                }
+
+                if (isset($serviceProductData['product_id'])) {
+                    $productId = (int) $serviceProductData['product_id'];
+                } else {
+                    $productName = trim((string) $serviceProductData['product_name']);
+                    $product = \App\Models\Product::query()->firstOrCreate(
+                        ['name' => $productName],
+                        ['is_active' => true]
+                    );
+                    $productId = $product->id;
+                }
+
                 $serviceProducts[] = SalonServiceProduct::query()->create([
                     'saloon_id' => $saloon->id,
-                    'service_id' => (int) $serviceProductData['service_id'],
-                    'product_id' => (int) $serviceProductData['product_id'],
+                    'service_id' => $serviceId,
+                    'product_id' => $productId,
                     'price' => $serviceProductData['price'],
                     'duration_minutes' => (int) $serviceProductData['duration_minutes'],
                     'is_active' => (bool) $serviceProductData['is_active'],

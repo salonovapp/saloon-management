@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation }  from 'react-router-dom'
 import BaseInput from '../../components/ui/BaseInput.jsx'
 import { useAuthStore } from '../../stores/auth'
 import BrandLogo from '../../components/ui/BrandLogo.jsx'
@@ -7,7 +7,11 @@ import BrandLogo from '../../components/ui/BrandLogo.jsx'
 
 export default function LoginView() {
   const router = useNavigate()
+  const location = useLocation()
   const auth = useAuthStore()
+
+  // Read ?redirect= query param (set by RequireAuth guard)
+  const redirectTo = new URLSearchParams(location.search).get('redirect') || null
 
   const [submitting, setSubmitting] = useState(false)
   const [authError, setAuthError] = useState('')
@@ -56,7 +60,12 @@ export default function LoginView() {
         router('/verify-2fa')
         return
       }
-      router(shouldOnboard ? '/onboarding' : '/dashboard')
+      // Respect the original redirect destination
+      if (redirectTo && !shouldOnboard) {
+        router(decodeURIComponent(redirectTo))
+      } else {
+        router(shouldOnboard ? '/onboarding' : '/dashboard')
+      }
     } catch (error) {
       setAuthError(error?.response?.data?.message || 'Invalid credentials. Please try again.')
     } finally {

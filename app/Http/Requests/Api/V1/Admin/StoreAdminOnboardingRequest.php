@@ -31,7 +31,7 @@ class StoreAdminOnboardingRequest extends FormRequest
         return [
             'saloon' => ['required', 'array'],
             'saloon.business_name' => ['required', 'string', 'max:120'],
-            'saloon.payment_type' => ['required', 'string', Rule::in(['online', 'cash', 'card', 'upi', 'bank_transfer', 'other'])],
+            'saloon.payment_type' => ['required', 'string', Rule::in(['online', 'cash', 'card', 'upi', 'bank_transfer', 'other', 'monthly', 'quarterly', 'yearly', 'one-time', 'Monthly', 'Quarterly', 'Yearly', 'One-time'])],
             'saloon.payment_amount' => ['required', 'numeric', 'min:0'],
             'saloon.transaction_id' => ['nullable', 'string', 'max:120'],
             'saloon.is_active' => ['required', 'boolean'],
@@ -56,8 +56,10 @@ class StoreAdminOnboardingRequest extends FormRequest
             'user.is_active' => ['required', 'boolean'],
 
             'service_products' => ['nullable', 'array'],
-            'service_products.*.service_id' => ['required', 'integer', 'exists:services,id'],
-            'service_products.*.product_id' => ['required', 'integer', 'exists:products,id'],
+            'service_products.*.service_id' => ['required_without:service_products.*.service_name', 'integer', 'exists:services,id'],
+            'service_products.*.service_name' => ['required_without:service_products.*.service_id', 'string', 'max:120'],
+            'service_products.*.product_id' => ['required_without:service_products.*.product_name', 'integer', 'exists:products,id'],
+            'service_products.*.product_name' => ['required_without:service_products.*.product_id', 'string', 'max:120'],
             'service_products.*.price' => ['required', 'numeric', 'min:0'],
             'service_products.*.duration_minutes' => ['required', 'integer', 'min:1'],
             'service_products.*.is_active' => ['required', 'boolean'],
